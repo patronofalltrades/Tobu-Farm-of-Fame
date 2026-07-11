@@ -1,9 +1,18 @@
-// Placeholder barn — replace with barn.glb.
-export function Barn() {
+import { useBarnModel } from './models';
+import { LandmarkModel } from './LandmarkModel';
+
+interface BarnProps {
+  onClick?: () => void;
+}
+
+export function Barn({ onClick }: BarnProps) {
+  const { scene } = useBarnModel();
   return (
-    <mesh position={[-8, 1.5, -6]}>
-      <boxGeometry args={[4, 3, 4]} />
-      <meshStandardMaterial color="#D50032" flatShading />
-    </mesh>
+    <LandmarkModel
+      scene={scene}
+      position={[-8, 0, -6]}
+      hitboxSize={[5.2, 3.8, 5.2]}
+      onClick={onClick}
+    />
   );
 }

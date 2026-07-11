@@ -1,9 +1,19 @@
-// Placeholder mascot Tobu — bigger than herd bulls, Barcelona red.
-export function Mascot() {
+import { useMascotModel } from './models';
+import { LandmarkModel } from './LandmarkModel';
+
+interface MascotProps {
+  onClick?: () => void;
+}
+
+export function Mascot({ onClick }: MascotProps) {
+  const { scene } = useMascotModel();
   return (
-    <mesh position={[0, 0.9, 0]}>
-      <boxGeometry args={[1.6, 1.6, 2.4]} />
-      <meshStandardMaterial color="#D50032" flatShading />
-    </mesh>
+    <LandmarkModel
+      scene={scene}
+      position={[0, 0, 0]}
+      scale={1.1}
+      hitboxSize={[2.3, 2.3, 3.1]}
+      onClick={onClick}
+    />
   );
 }

@@ -1,3 +1,5 @@
+export type TobuStatus = 'pending' | 'approved' | 'rejected';
+
 export interface Tobu {
   id: string;
   winner_name: string;
@@ -5,9 +7,10 @@ export interface Tobu {
   photo_url?: string;
   date: string;
   term: 1 | 2 | 3;
-  bull_color_seed: number;
-  bull_position: { x: number; z: number };
+  bull_pattern_seed: string;
   reactions: Record<string, string[]>;
+  status: TobuStatus;
+  submitted_by: string;
   created_at: number;
 }
 
