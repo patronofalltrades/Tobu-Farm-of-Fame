@@ -77,32 +77,42 @@ html, body, #root {
   margin-bottom: 16px;
 }
 
-.reaction-button {
+.speech-content button.reaction-button {
   background: #f3f3f3;
   color: #222;
   border: 1px solid #ddd;
   border-radius: 999px;
-  padding: 6px 10px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 12px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   cursor: pointer;
   font-weight: 700;
+  font-size: 16px;
 }
 
-.reaction-button:hover {
+.speech-content button.reaction-button:hover {
   background: #fff8d6;
 }
 
-.reaction-button.is-active {
+.speech-content button.reaction-button.is-active {
   background: #FFCD00;
   color: #004D98;
   border-color: #FFCD00;
 }
 
-.reaction-button:disabled {
+.speech-content button.reaction-button:disabled {
   opacity: 0.65;
-  cursor: wait;
+  cursor: not-allowed;
+}
+
+.reaction-hint {
+  color: #004D98;
+  display: block;
+  margin-bottom: 8px;
 }
 
 .speech-content button {

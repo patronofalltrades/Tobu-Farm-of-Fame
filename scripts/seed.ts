@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

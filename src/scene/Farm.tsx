@@ -1,9 +1,10 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Sky, Environment } from '@react-three/drei';
+import { OrbitControls, Sky, Environment, Clone } from '@react-three/drei';
 import { BullHerd } from './BullHerd';
 import { Barn } from './Barn';
 import { Signpost } from './Signpost';
 import { Mascot } from './Mascot';
+import { useFenceModel } from './models';
 import './models';
 
 interface FarmProps {
@@ -12,35 +13,21 @@ interface FarmProps {
   onSignpostClick?: () => void;
 }
 
+/** Fence ring from repeated 7-unit GLB segments around the ±14 pasture. */
 function Fences() {
-  const posts: Array<[number, number, number]> = [];
-  for (let x = -14; x <= 14; x += 7) {
-    posts.push([x, 0.4, -14], [x, 0.4, 14], [-14, 0.4, x], [14, 0.4, x]);
+  const { scene } = useFenceModel();
+  const segments: Array<{ position: [number, number, number]; rotY: number }> = [];
+  for (const x of [-10.5, -3.5, 3.5, 10.5]) {
+    segments.push({ position: [x, 0, -14], rotY: 0 });
+    segments.push({ position: [x, 0, 14], rotY: 0 });
+    segments.push({ position: [-14, 0, x], rotY: Math.PI / 2 });
+    segments.push({ position: [14, 0, x], rotY: Math.PI / 2 });
   }
   return (
     <group>
-      {posts.map((p, i) => (
-        <mesh key={i} position={p}>
-          <boxGeometry args={[0.15, 0.8, 0.15]} />
-          <meshStandardMaterial color="#8B4513" flatShading />
-        </mesh>
+      {segments.map((s, i) => (
+        <Clone key={i} object={scene} position={s.position} rotation={[0, s.rotY, 0]} />
       ))}
-      <mesh position={[0, 0.35, -14]} rotation={[0, 0, 0]}>
-        <boxGeometry args={[28, 0.08, 0.08]} />
-        <meshStandardMaterial color="#FFCD00" flatShading />
-      </mesh>
-      <mesh position={[0, 0.35, 14]}>
-        <boxGeometry args={[28, 0.08, 0.08]} />
-        <meshStandardMaterial color="#FFCD00" flatShading />
-      </mesh>
-      <mesh position={[-14, 0.35, 0]} rotation={[0, Math.PI / 2, 0]}>
-        <boxGeometry args={[28, 0.08, 0.08]} />
-        <meshStandardMaterial color="#FFCD00" flatShading />
-      </mesh>
-      <mesh position={[14, 0.35, 0]} rotation={[0, Math.PI / 2, 0]}>
-        <boxGeometry args={[28, 0.08, 0.08]} />
-        <meshStandardMaterial color="#FFCD00" flatShading />
-      </mesh>
     </group>
   );
 }
