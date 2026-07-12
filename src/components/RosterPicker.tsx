@@ -5,6 +5,7 @@ import { unlockAudio } from '../audio/useFarmAudio';
 
 export function RosterPicker() {
   const setUserName = useFarmStore((s) => s.setUserName);
+  const setGuest = useFarmStore((s) => s.setGuest);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -23,7 +24,7 @@ export function RosterPicker() {
 
   const handleSkip = () => {
     unlockAudio();
-    setUserName('Guest');
+    setGuest();
   };
 
   return (

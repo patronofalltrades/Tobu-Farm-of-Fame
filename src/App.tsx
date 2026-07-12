@@ -31,11 +31,26 @@ const mockTobu = (
   created_at: Date.now(),
 });
 
-const MOCK_TOBUS: Tobu[] = [
+const BASE_MOCK_TOBUS: Tobu[] = [
   mockTobu('1', 'Steph Charouk', 'Asked the prof if EBITDA stood for "Earnings Before I Tricked Dumb Analysts."', '2025-10-12'),
   mockTobu('2', 'Hanif Ramadhan', 'Built a Tobu prototype before class and casually demoed it in the hallway.', '2025-10-19'),
   mockTobu('3', 'Agnes Chen', 'Summarized a 40-minute debate in one sentence and everyone nodded in silence.', '2025-11-02'),
 ];
+
+/** `?bulls=N` inflates demo data for perf testing (US-005: 13 and 40 bulls). */
+function buildMockTobus(): Tobu[] {
+  const n = Number(new URLSearchParams(window.location.search).get('bulls'));
+  if (!Number.isFinite(n) || n <= BASE_MOCK_TOBUS.length) return BASE_MOCK_TOBUS;
+  const extra: Tobu[] = [];
+  for (let i = BASE_MOCK_TOBUS.length; i < n; i++) {
+    extra.push(
+      mockTobu(`mock-${i}`, `Demo Winner ${i}`, `Synthetic Tobu #${i} for performance testing.`, '2025-11-09'),
+    );
+  }
+  return [...BASE_MOCK_TOBUS, ...extra];
+}
+
+const MOCK_TOBUS: Tobu[] = buildMockTobus();
 
 const REACTION_EMOJIS: ReactionEmoji[] = ['😂', '❤️', '🔥', '👏', '🐂'];
 
@@ -45,6 +60,7 @@ function App() {
   const tobus = useFarmStore((s) => s.tobus);
   const selectTobu = useFarmStore((s) => s.selectTobu);
   const userName = useFarmStore((s) => s.userName);
+  const isGuest = useFarmStore((s) => s.isGuest);
   const [hasFirebaseError, setHasFirebaseError] = useState(false);
   const [isUpdatingReaction, setIsUpdatingReaction] = useState(false);
   const [isBarnOpen, setIsBarnOpen] = useState(false);
@@ -157,7 +173,7 @@ function App() {
         />
       </div>
 
-      {!userName && <RosterPicker />}
+      {!userName && !isGuest && <RosterPicker />}
 
       {isLeaderboardOpen && <Leaderboard onClose={() => setIsLeaderboardOpen(false)} />}
 
@@ -165,11 +181,10 @@ function App() {
         <div className="speech-bubble" onClick={() => selectTobu(null)}>
           <div className="speech-content" onClick={(e) => e.stopPropagation()}>
             <h2>{selected.winner_name}</h2>
-            {selected.photo_url && (
-              <img className="speech-photo" src={selected.photo_url} alt="" />
-            )}
             <p>"{selected.story}"</p>
-            <small>{selected.date} · Term {selected.term}</small>
+            {!userName && (
+              <small className="reaction-hint">Pick your name from the roster to react.</small>
+            )}
             <div className="reaction-row">
               {REACTION_EMOJIS.map((emoji) => {
                 const count = selected.reactions[emoji]?.length ?? 0;
@@ -180,7 +195,8 @@ function App() {
                     type="button"
                     className={`reaction-button${active ? ' is-active' : ''}`}
                     onClick={() => void handleReaction(emoji)}
-                    disabled={isUpdatingReaction}
+                    disabled={isUpdatingReaction || !userName}
+                    title={!userName ? 'Pick your name first to react' : undefined}
                   >
                     <span>{emoji}</span>
                     <span>{count}</span>
