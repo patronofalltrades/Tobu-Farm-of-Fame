@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tobus/{docId} {
+      // Herd UI filters to approved; admin queue needs pending reads (PIN is client-side).
+      allow read: if true;
+
+      allow create: if request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasAll([
+          'winner_name', 'story', 'date', 'term', 'bull_pattern_seed',
+          'reactions', 'status', 'submitted_by', 'created_at'
+        ])
+        && request.resource.data.story is string
+        && request.resource.data.story.size() > 0
+        && request.resource.data.story.size() <= 280
+        && request.resource.data.term in [1, 2, 3];
+
+      allow update: if (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+        && request.resource.data.status == resource.data.status
+      ) || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['approved', 'rejected']
+        && resource.data.status == 'pending'
+      );
+
+      allow delete: if false;
+    }
+  }
+}

@@ -163,12 +163,22 @@ npm run dev
 ### Seed Data
 
 ```bash
-npx tsx scripts/seed.ts
+npm run seed
 ```
+
+Requires Firebase Admin credentials (`GOOGLE_APPLICATION_CREDENTIALS`) and `data/seed-demo.json`.
+
+### Firestore rules
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+Rules live in `firestore.rules`. Admin PIN (`VITE_ADMIN_PIN`) gates the queue UI only — not server auth. Share the PIN only with the class rep.
 
 ### Deploy
 
-Push to GitHub → Vercel auto-deploys.
+Push to GitHub → Vercel auto-deploys. Set all `VITE_*` env vars in Vercel, including `VITE_ADMIN_PIN`.
 
 ---
 
