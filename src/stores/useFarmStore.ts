@@ -18,11 +18,37 @@ interface FarmState {
   markIntroSeen: () => void;
 }
 
+// Safari private mode (and similar) can throw on any localStorage access, not just
+// when full — guard every call so a storage restriction never blanks the app.
+function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage unavailable — state still updates in-memory via `set()`, just won't persist.
+  }
+}
+
+function safeRemoveItem(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Storage unavailable — nothing to clean up.
+  }
+}
+
 // Older builds stored the literal name "Guest" for skipped identity; treat it as anonymous.
-const storedName = localStorage.getItem('tobu_user_name');
+const storedName = safeGetItem('tobu_user_name');
 const initialUserName = storedName === 'Guest' ? null : storedName;
-const initialIsGuest = storedName === 'Guest' || localStorage.getItem('tobu_guest') === '1';
-const initialHasSeenIntro = localStorage.getItem('tobu_intro_seen') === '1';
+const initialIsGuest = storedName === 'Guest' || safeGetItem('tobu_guest') === '1';
+const initialHasSeenIntro = safeGetItem('tobu_intro_seen') === '1';
 
 export const useFarmStore = create<FarmState>((set) => ({
   tobus: [],
@@ -37,17 +63,17 @@ export const useFarmStore = create<FarmState>((set) => ({
   setAdmin: (isAdmin) => set({ isAdmin }),
   toggleMute: () => set((s) => ({ isMuted: !s.isMuted })),
   setUserName: (name) => {
-    localStorage.setItem('tobu_user_name', name);
-    localStorage.removeItem('tobu_guest');
+    safeSetItem('tobu_user_name', name);
+    safeRemoveItem('tobu_guest');
     set({ userName: name, isGuest: false });
   },
   setGuest: () => {
-    localStorage.setItem('tobu_guest', '1');
-    localStorage.removeItem('tobu_user_name');
+    safeSetItem('tobu_guest', '1');
+    safeRemoveItem('tobu_user_name');
     set({ userName: null, isGuest: true });
   },
   markIntroSeen: () => {
-    localStorage.setItem('tobu_intro_seen', '1');
+    safeSetItem('tobu_intro_seen', '1');
     set({ hasSeenIntro: true });
   },
 }));

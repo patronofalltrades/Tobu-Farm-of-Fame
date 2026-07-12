@@ -12,6 +12,7 @@ interface BarnSubmitProps {
 
 const STORY_MAX = 280;
 const TERMS: Array<1 | 2 | 3> = [1, 2, 3];
+const PROGRAM_START_DATE = '2025-01-11'; // IESE MBA 2027 Barcelona section start
 
 export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
   const userName = useFarmStore((s) => s.userName);
@@ -22,6 +23,7 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
   const [winnerQuery, setWinnerQuery] = useState('');
   const [story, setStory] = useState('');
   const [term, setTerm] = useState<1 | 2 | 3>(3);
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [photo, setPhoto] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -138,7 +140,13 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
           </div>
           <div>
             <label className="barn-label">Date</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              type="date"
+              value={date}
+              min={PROGRAM_START_DATE}
+              max={today}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
         </div>
 
