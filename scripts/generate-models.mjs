@@ -32,6 +32,14 @@ const PALETTE = {
   darkWood: 0x6b4423,
   plush: 0xa9746e,
   dark: 0x3a2e2a,
+  // Natural scenery tones (greens/browns/grays — NOT the senyera palette)
+  trunk: 0x7a5230,
+  leaf: 0x4f8f3a,
+  leafDark: 0x3d7330,
+  bushGreen: 0x5c9a3f,
+  bushDark: 0x477c31,
+  rockGray: 0x9198a0,
+  rockDark: 0x6f767e,
 };
 
 /**
@@ -213,6 +221,34 @@ function mascot() {
   return b;
 }
 
+/** Chunky low-poly deciduous tree: brown trunk + diamond canopy blocks. */
+function tree() {
+  const b = new MeshBuilder();
+  b.box('trunk', 0.42, 1.7, 0.42, 0, 0.85, 0);
+  b.box('leaf', 1.9, 1.5, 1.9, 0, 2.15, 0, { ry: 0.6 });
+  b.box('leafDark', 1.35, 1.15, 1.35, 0.1, 3.0, -0.05, { ry: -0.4 });
+  b.box('leaf', 0.9, 0.8, 0.9, -0.15, 3.6, 0.1, { ry: 0.25 });
+  return b;
+}
+
+/** Low round bush: two clustered green blocks. */
+function bush() {
+  const b = new MeshBuilder();
+  b.box('bushGreen', 1.25, 0.95, 1.2, 0, 0.47, 0, { ry: 0.5 });
+  b.box('bushDark', 0.85, 0.72, 0.85, 0.42, 0.86, 0.18, { ry: -0.3 });
+  b.box('bushGreen', 0.7, 0.6, 0.7, -0.4, 0.75, -0.2, { ry: 0.8 });
+  return b;
+}
+
+/** Angular boulder cluster in cool grays. */
+function rock() {
+  const b = new MeshBuilder();
+  b.box('rockGray', 1.05, 0.62, 0.95, 0, 0.31, 0, { ry: 0.4 });
+  b.box('rockDark', 0.62, 0.5, 0.6, 0.34, 0.55, -0.22, { ry: -0.5 });
+  b.box('rockGray', 0.5, 0.34, 0.5, -0.34, 0.4, 0.24, { ry: 0.9 });
+  return b;
+}
+
 /** One fence segment: two posts + two rails, 7 units wide along X. */
 function fence() {
   const b = new MeshBuilder();
@@ -229,4 +265,7 @@ await write('barn', barn());
 await write('signpost', signpost());
 await write('mascot', mascot());
 await write('fence', fence());
+await write('tree', tree());
+await write('bush', bush());
+await write('rock', rock());
 console.log('Done.');

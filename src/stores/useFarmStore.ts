@@ -8,18 +8,21 @@ interface FarmState {
   isMuted: boolean;
   userName: string | null;
   isGuest: boolean;
+  hasSeenIntro: boolean;
   setTobus: (tobus: Tobu[]) => void;
   selectTobu: (id: string | null) => void;
   setAdmin: (isAdmin: boolean) => void;
   toggleMute: () => void;
   setUserName: (name: string) => void;
   setGuest: () => void;
+  markIntroSeen: () => void;
 }
 
 // Older builds stored the literal name "Guest" for skipped identity; treat it as anonymous.
 const storedName = localStorage.getItem('tobu_user_name');
 const initialUserName = storedName === 'Guest' ? null : storedName;
 const initialIsGuest = storedName === 'Guest' || localStorage.getItem('tobu_guest') === '1';
+const initialHasSeenIntro = localStorage.getItem('tobu_intro_seen') === '1';
 
 export const useFarmStore = create<FarmState>((set) => ({
   tobus: [],
@@ -28,6 +31,7 @@ export const useFarmStore = create<FarmState>((set) => ({
   isMuted: true,
   userName: initialUserName,
   isGuest: initialIsGuest,
+  hasSeenIntro: initialHasSeenIntro,
   setTobus: (tobus) => set({ tobus }),
   selectTobu: (id) => set({ selectedTobuId: id }),
   setAdmin: (isAdmin) => set({ isAdmin }),
@@ -41,5 +45,9 @@ export const useFarmStore = create<FarmState>((set) => ({
     localStorage.setItem('tobu_guest', '1');
     localStorage.removeItem('tobu_user_name');
     set({ userName: null, isGuest: true });
+  },
+  markIntroSeen: () => {
+    localStorage.setItem('tobu_intro_seen', '1');
+    set({ hasSeenIntro: true });
   },
 }));

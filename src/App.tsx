@@ -54,6 +54,26 @@ const MOCK_TOBUS: Tobu[] = buildMockTobus();
 
 const REACTION_EMOJIS: ReactionEmoji[] = ['😂', '❤️', '🔥', '👏', '🐂'];
 
+/** First-visit instructional toast — auto-dismisses after 7s or on tap (US-005). */
+function IntroToast() {
+  const hasSeenIntro = useFarmStore((s) => s.hasSeenIntro);
+  const markIntroSeen = useFarmStore((s) => s.markIntroSeen);
+
+  useEffect(() => {
+    if (hasSeenIntro) return;
+    const timer = window.setTimeout(() => markIntroSeen(), 7000);
+    return () => window.clearTimeout(timer);
+  }, [hasSeenIntro, markIntroSeen]);
+
+  if (hasSeenIntro) return null;
+
+  return (
+    <button type="button" className="intro-toast" onClick={() => markIntroSeen()}>
+      Tap a bull to hear their story · Tap the barn to submit · Check the signpost for rankings
+    </button>
+  );
+}
+
 function App() {
   const setTobus = useFarmStore((s) => s.setTobus);
   const selectedTobuId = useFarmStore((s) => s.selectedTobuId);
@@ -157,13 +177,29 @@ function App() {
 
   return (
     <div className="app">
-      <header className="header">
-        <MuteButton />
-        <h1>🐂 Tobu Farm of Fame</h1>
-        <p>Data source: {isFirebaseConfigured && !hasFirebaseError ? 'Live Firebase' : 'Demo fallback'}</p>
-        {dataSourceMessage && <p>{dataSourceMessage}</p>}
-        <p>Tap the barn to submit · signpost for leaderboard · bulls for stories.</p>
-      </header>
+      <div className="topbar">
+        <span className="topbar-title">🐂 Tobu Farm</span>
+        <div className="topbar-actions">
+          {dataSourceMessage && (
+            <span className="topbar-status" title={dataSourceMessage} aria-label={dataSourceMessage}>
+              ⚠️
+            </span>
+          )}
+          <MuteButton />
+          <button
+            type="button"
+            className={`admin-trigger${isAdmin ? ' is-admin' : ''}`}
+            title={isAdmin ? 'Open pending Tobu queue' : 'Admin PIN'}
+            onClick={() => {
+              if (isAdmin) setIsAdminPanelOpen(true);
+              else setIsAdminPinOpen(true);
+            }}
+            onContextMenu={(e) => { e.preventDefault(); if (isAdmin) setAdmin(false); }}
+          >
+            {isAdmin ? '🛠' : ''}
+          </button>
+        </div>
+      </div>
 
       <div className="canvas-wrap">
         <Farm
@@ -216,18 +252,7 @@ function App() {
         />
       )}
 
-      <button
-        type="button"
-        className={`admin-trigger${isAdmin ? ' is-admin' : ''}`}
-        title={isAdmin ? 'Open pending Tobu queue' : 'Admin PIN'}
-        onClick={() => {
-          if (isAdmin) setIsAdminPanelOpen(true);
-          else setIsAdminPinOpen(true);
-        }}
-        onContextMenu={(e) => { e.preventDefault(); if (isAdmin) setAdmin(false); }}
-      >
-        {isAdmin ? '🛠' : ''}
-      </button>
+      <IntroToast />
 
       {isAdminPinOpen && (
         <AdminPinGate
