@@ -12,8 +12,6 @@ import {
 import { db } from './config';
 import type { Tobu, TobuStatus } from '../types';
 
-export { uploadTobuPhoto } from './storage';
-
 const tobusCol = collection(db, 'tobus');
 
 type SnapshotMapper = (rawId: string, raw: Record<string, unknown>) => Tobu;

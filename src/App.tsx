@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { TriangleAlert, Wrench } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { SmilePlus, TriangleAlert, Wrench } from 'lucide-react';
 import { Farm } from './scene/Farm';
+import { bullCoatFromSeed } from './hooks/useBullColor';
 import { RosterPicker } from './components/RosterPicker';
 import { Leaderboard } from './components/Leaderboard';
 import { BarnSubmit } from './components/BarnSubmit';
@@ -55,6 +56,14 @@ const MOCK_TOBUS: Tobu[] = buildMockTobus();
 
 const REACTION_EMOJIS: ReactionEmoji[] = ['😂', '❤️', '🔥', '👏', '🐂'];
 
+/** WhatsApp-group-style sender tint from the winner's coat color; light
+ *  coats (cream/white/silver) fall back to brand blue for contrast. */
+function senderTint(name: string): string {
+  const base = bullCoatFromSeed(name).baseColor; // "hsl(h, s%, l%)"
+  const lightness = Number(/(\d+)%\)$/.exec(base)?.[1] ?? 50);
+  return lightness > 55 ? 'var(--color-brand-blue)' : base;
+}
+
 /** First-visit instructional toast — auto-dismisses after 7s or on tap (US-005). */
 function IntroToast() {
   const hasSeenIntro = useFarmStore((s) => s.hasSeenIntro);
@@ -93,6 +102,25 @@ function App() {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const isAdmin = useFarmStore((s) => s.isAdmin);
   const setAdmin = useFarmStore((s) => s.setAdmin);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const pickerAnchorRef = useRef<HTMLDivElement>(null);
+
+  // Reaction picker housekeeping: reset when the bubble changes/closes,
+  // close on outside tap while open.
+  useEffect(() => {
+    setIsPickerOpen(false);
+  }, [selectedTobuId]);
+
+  useEffect(() => {
+    if (!isPickerOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (pickerAnchorRef.current && !pickerAnchorRef.current.contains(e.target as Node)) {
+        setIsPickerOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [isPickerOpen]);
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -133,11 +161,12 @@ function App() {
       else if (isAdminPinOpen) setIsAdminPinOpen(false);
       else if (isLeaderboardOpen) setIsLeaderboardOpen(false);
       else if (isMascotOpen) setIsMascotOpen(false);
+      else if (isPickerOpen) setIsPickerOpen(false); // picker closes before the bubble
       else if (selectedTobuId) selectTobu(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isBarnOpen, isAdminPanelOpen, isAdminPinOpen, isLeaderboardOpen, isMascotOpen, selectedTobuId, selectTobu]);
+  }, [isBarnOpen, isAdminPanelOpen, isAdminPinOpen, isLeaderboardOpen, isMascotOpen, isPickerOpen, selectedTobuId, selectTobu]);
 
   const selected = tobus.find((t) => t.id === selectedTobuId);
   const selectedReaction = useMemo(() => {
@@ -234,8 +263,10 @@ function App() {
 
       {selected && (
         <div className="speech-bubble" onClick={() => selectTobu(null)}>
-          <div className="speech-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{selected.winner_name}</h2>
+          <div className="speech-content tobu-bubble" onClick={(e) => e.stopPropagation()}>
+            <h2 className="tobu-sender" style={{ color: senderTint(selected.winner_name) }}>
+              {selected.winner_name}
+            </h2>
             {/* Stories carry their own quote marks where the moment is a quote. */}
             <p>{selected.story}</p>
             {selected.commentary && (
@@ -244,24 +275,59 @@ function App() {
             {!userName && (
               <small className="reaction-hint">Pick your name from the roster to react.</small>
             )}
-            <div className="reaction-row">
-              {REACTION_EMOJIS.map((emoji) => {
-                const count = selected.reactions[emoji]?.length ?? 0;
-                const active = selectedReaction === emoji;
-                return (
-                  <button
-                    key={emoji}
-                    type="button"
-                    className={`reaction-button${active ? ' is-active' : ''}`}
-                    onClick={() => void handleReaction(emoji)}
-                    disabled={isUpdatingReaction || !userName}
-                    title={!userName ? 'Pick your name first to react' : undefined}
-                  >
-                    <span>{emoji}</span>
-                    <span>{count}</span>
-                  </button>
-                );
-              })}
+            <div className="reaction-bar">
+              {REACTION_EMOJIS.filter((emoji) => (selected.reactions[emoji]?.length ?? 0) > 0).map(
+                (emoji) => {
+                  const count = selected.reactions[emoji]?.length ?? 0;
+                  const active = selectedReaction === emoji;
+                  return (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className={`reaction-chip${active ? ' is-active' : ''}`}
+                      onClick={() => void handleReaction(emoji)}
+                      disabled={isUpdatingReaction || !userName}
+                      aria-pressed={active}
+                      title={active ? 'Tap to remove your reaction' : undefined}
+                    >
+                      <span aria-hidden>{emoji}</span>
+                      <span>{count}</span>
+                      <span className="visually-hidden">{emoji} reactions</span>
+                    </button>
+                  );
+                },
+              )}
+              <div className="reaction-picker-anchor" ref={pickerAnchorRef}>
+                <button
+                  type="button"
+                  className="reaction-add"
+                  aria-label="Add reaction"
+                  aria-expanded={isPickerOpen}
+                  disabled={isUpdatingReaction || !userName}
+                  title={!userName ? 'Pick your name first to react' : 'Add reaction'}
+                  onClick={() => setIsPickerOpen((open) => !open)}
+                >
+                  <SmilePlus size={20} aria-hidden />
+                </button>
+                {isPickerOpen && (
+                  <div className="reaction-picker">
+                    {REACTION_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        className={`reaction-pick${selectedReaction === emoji ? ' is-active' : ''}`}
+                        aria-label={`React with ${emoji}`}
+                        onClick={() => {
+                          void handleReaction(emoji);
+                          setIsPickerOpen(false);
+                        }}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <button onClick={() => selectTobu(null)}>Close</button>
           </div>

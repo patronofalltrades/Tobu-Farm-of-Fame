@@ -2,6 +2,9 @@
    Patterns borrowed from mature systems (4px spacing grid à la Polaris/Gestalt,
    capped type scale, role-based colors); the Barcelona palette stays the brand. */
 :root {
+  /* Typeface — self-hosted Nunito with the old system stack as fallback */
+  --font-family-base: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
   /* Spacing — 4px base grid */
   --space-1: 4px;
   --space-2: 8px;

@@ -69,15 +69,6 @@ export function AdminPanel({ onClose, isFirebaseLive }: AdminPanelProps) {
                 <strong>{t.winner_name}</strong> · Term {t.term} · {t.date}
                 <p style={{ margin: '6px 0' }}>"{t.story}"</p>
                 <small>Submitted by {t.submitted_by}</small>
-                {t.photo_url && (
-                  <div>
-                    <img
-                      src={t.photo_url}
-                      alt={`Photo submitted with ${t.winner_name}'s Tobu`}
-                      style={{ maxWidth: '100%', borderRadius: 6, marginTop: 6 }}
-                    />
-                  </div>
-                )}
                 <div className="admin-actions">
                   <button
                     className="approve"

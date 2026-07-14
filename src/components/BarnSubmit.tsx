@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { PartyPopper, Warehouse } from 'lucide-react';
 import { ROSTER } from '../data/roster';
 import { useFarmStore } from '../stores/useFarmStore';
-import { addTobu, uploadTobuPhoto } from '../firebase/tobus';
+import { addTobu } from '../firebase/tobus';
 import { isFirebaseConfigured } from '../firebase/config';
 import type { Tobu } from '../types';
 
@@ -26,7 +26,6 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
   const [term, setTerm] = useState<1 | 2 | 3>(3);
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [photo, setPhoto] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -43,7 +42,7 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
   // Unsaved-draft guard (prd-ui-ux-uplift US-006): backdrop tap, Cancel, and
   // Escape all funnel through here so a half-written Tobu is never silently
   // discarded.
-  const isDirty = Boolean(winner || winnerQuery.trim() || story.trim() || photo);
+  const isDirty = Boolean(winner || winnerQuery.trim() || story.trim());
   const requestClose = () => {
     if (submitted || !isDirty || window.confirm('Discard this Tobu draft?')) onClose();
   };
@@ -51,23 +50,18 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      const dirty = Boolean(winner || winnerQuery.trim() || story.trim() || photo);
+      const dirty = Boolean(winner || winnerQuery.trim() || story.trim());
       if (submitted || !dirty || window.confirm('Discard this Tobu draft?')) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [submitted, winner, winnerQuery, story, photo, onClose]);
+  }, [submitted, winner, winnerQuery, story, onClose]);
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
     try {
-      let photo_url: string | undefined;
-      if (photo && isFirebaseLive) {
-        photo_url = await uploadTobuPhoto(photo);
-      }
-
       const payload: Omit<Tobu, 'id' | 'created_at'> = {
         winner_name: winner,
         story: story.trim(),
@@ -77,7 +71,6 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
         reactions: {},
         status: 'pending',
         submitted_by: userName ?? 'Guest',
-        ...(photo_url ? { photo_url } : {}),
       };
 
       if (isFirebaseLive) {
@@ -177,16 +170,6 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
             />
           </div>
         </div>
-
-        <label className="barn-label" htmlFor="barn-photo">Photo (optional)</label>
-        <input
-          id="barn-photo"
-          type="file"
-          accept="image/*"
-          onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-          disabled={!isFirebaseLive}
-        />
-        {!isFirebaseLive && <small>Photo uploads require Firebase to be configured.</small>}
 
         {error && <p className="barn-error" role="alert">{error}</p>}
 
