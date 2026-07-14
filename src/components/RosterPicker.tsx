@@ -5,8 +5,10 @@ import { unlockAudio } from '../audio/useFarmAudio';
 
 /**
  * Searchable dropdown (combobox) over the ~70-name section roster
- * (prd-farm-polish-v2 P0-4). Closed by default; opens on focus/tap,
- * type-to-filter, arrow keys + Enter, Escape or outside tap to close.
+ * (prd-farm-polish-v2 P0-4). Closed by default — including on first paint:
+ * no autoFocus, so the list only opens on a genuine user tap/focus
+ * (prd-farm-navigation-behavior-fixes US-006). Type-to-filter, arrow keys +
+ * Enter, Escape or outside tap to close.
  */
 export function RosterPicker() {
   const setUserName = useFarmStore((s) => s.setUserName);
@@ -103,7 +105,6 @@ export function RosterPicker() {
             }}
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
-            autoFocus
           />
           {isOpen && (
             <ul className="roster-dropdown" id="roster-dropdown" role="listbox" ref={listRef}>

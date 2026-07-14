@@ -13,13 +13,13 @@ import type { WebGLProgramParametersWithUniforms } from 'three';
 import { useFarmStore } from '../stores/useFarmStore';
 import {
   bullCoatFromSeed,
-  bullPositionFromSeed,
   hashString,
   mulberry32,
 } from '../hooks/useBullColor';
 import { useBullModel } from './models';
 import { mergeGltfMeshes } from './gltfUtils';
-import { computePastureBound } from './farmLayout';
+import { computePastureBound, computeSpawnPositions, TRACTOR_CLEARANCE } from './farmLayout';
+import { tractorState } from './tractorState';
 import type { Tobu } from '../types';
 import { playMoo } from '../audio/useFarmAudio';
 
@@ -39,11 +39,12 @@ const IDLE_MAX = 6;
 const FENCE_MARGIN = 1; // wander stays this far inside the fence line
 const TURN_RATE = 4; // rad/sec toward travel heading
 
+// Static landmarks only — the tractor is a MOVING exclusion now, read live
+// from tractorState each frame (US-005).
 const LANDMARK_EXCLUSIONS: Array<{ x: number; z: number; r: number }> = [
-  { x: -8, z: -6, r: 2.5 },     // barn
-  { x: 0, z: 0, r: 2.0 },       // mascot
-  { x: 8, z: -4, r: 1.5 },      // signpost
-  { x: -11.5, z: -8.5, r: 2.0 }, // tractor (Farm.tsx <Tractor /> position)
+  { x: -8, z: -6, r: 2.5 }, // barn
+  { x: 0, z: 0, r: 2.0 },   // mascot
+  { x: 8, z: -4, r: 1.5 },  // signpost
 ];
 
 // Herd separation: bulls softly push each other apart so they never stand
@@ -72,16 +73,49 @@ function insideExclusion(x: number, z: number): boolean {
   );
 }
 
-function pickTarget(from: Vector3, rng: () => number, out: Vector3, wanderBound: number): void {
-  for (let attempt = 0; attempt < 5; attempt++) {
+function nearTractor(x: number, z: number): boolean {
+  if (!tractorState.active) return false;
+  const dx = x - tractorState.x;
+  const dz = z - tractorState.z;
+  return dx * dx + dz * dz < TRACTOR_CLEARANCE * TRACTOR_CLEARANCE;
+}
+
+/**
+ * Predictive target selection (US-003): candidates too close to any other
+ * bull's current position OR current destination are rejected up front, so
+ * bulls stop walking into spots that are already taken. The reactive
+ * separation pass below stays as a safety net, not the primary mechanism.
+ */
+function pickTarget(
+  from: Vector3,
+  rng: () => number,
+  out: Vector3,
+  wanderBound: number,
+  others: Array<BullRuntime | undefined>,
+  selfIdx: number,
+): void {
+  const minD2 = MIN_SEPARATION * MIN_SEPARATION;
+  for (let attempt = 0; attempt < 8; attempt++) {
     const angle = rng() * Math.PI * 2;
     const dist = 0.8 + rng() * WANDER_RADIUS;
     const x = Math.min(Math.max(from.x + Math.cos(angle) * dist, -wanderBound), wanderBound);
     const z = Math.min(Math.max(from.z + Math.sin(angle) * dist, -wanderBound), wanderBound);
-    if (!insideExclusion(x, z)) {
-      out.set(x, 0, z);
-      return;
+    if (insideExclusion(x, z) || nearTractor(x, z)) continue;
+    let blocked = false;
+    for (let j = 0; j < others.length; j++) {
+      if (j === selfIdx) continue;
+      const o = others[j];
+      if (!o) continue;
+      const dxp = x - o.position.x;
+      const dzp = z - o.position.z;
+      if (dxp * dxp + dzp * dzp < minD2) { blocked = true; break; }
+      const dxt = x - o.target.x;
+      const dzt = z - o.target.z;
+      if (dxt * dxt + dzt * dzt < minD2) { blocked = true; break; }
     }
+    if (blocked) continue;
+    out.set(x, 0, z);
+    return;
   }
   out.copy(from); // give up this round; bull idles in place a bit longer
 }
@@ -215,6 +249,20 @@ export function BullHerd() {
   const count = indexed.length;
   const wanderBound = computePastureBound(count) - FENCE_MARGIN;
 
+  // Guaranteed-spread spawn layout (US-002): the whole herd is placed in one
+  // deterministic pass instead of each bull hashing its own spot, so no two
+  // bulls can start the session overlapping.
+  const spawnById = useMemo(() => {
+    const points = computeSpawnPositions(
+      indexed.map(({ tobu }) => tobu.id),
+      wanderBound,
+      insideExclusion,
+    );
+    const map = new Map<string, { x: number; z: number }>();
+    indexed.forEach(({ tobu }, i) => map.set(tobu.id, points[i]));
+    return map;
+  }, [indexed, wanderBound]);
+
   // Per-instance shader attributes, rebuilt when the herd roster changes.
   const instanceAttrs = useMemo(() => {
     const phase = new Float32Array(count);
@@ -254,7 +302,7 @@ export function BullHerd() {
     indexed.forEach(({ tobu, index }, i) => {
       seen.add(tobu.id);
       if (!runtimes.current.has(tobu.id)) {
-        const spawn = bullPositionFromSeed(tobu.bull_pattern_seed, index);
+        const spawn = spawnById.get(tobu.id) ?? { x: 0, z: 0 };
         const rng = mulberry32(hashString(tobu.bull_pattern_seed + ':' + index));
         runtimes.current.set(tobu.id, {
           position: new Vector3(spawn.x, 0, spawn.z),
@@ -273,7 +321,7 @@ export function BullHerd() {
       if (!seen.has(id)) runtimes.current.delete(id);
     }
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [indexed, count]);
+  }, [indexed, count, spawnById]);
 
   useFrame((state, delta) => {
     const mesh = meshRef.current;
@@ -283,8 +331,10 @@ export function BullHerd() {
 
     let stateAttrDirty = false;
 
-    indexed.forEach(({ tobu }, i) => {
-      const rt = runtimes.current.get(tobu.id);
+    const rts = indexed.map(({ tobu }) => runtimes.current.get(tobu.id));
+
+    indexed.forEach((_, i) => {
+      const rt = rts[i];
       if (!rt) return;
 
       if (rt.state === 'walking') {
@@ -306,7 +356,7 @@ export function BullHerd() {
           rt.position.addScaledVector(_dir, step);
         }
       } else if (now >= rt.idleUntil) {
-        pickTarget(rt.position, rt.rng, rt.target, wanderBound);
+        pickTarget(rt.position, rt.rng, rt.target, wanderBound, rts, i);
         if (rt.target.distanceToSquared(rt.position) > ARRIVE_THRESHOLD * ARRIVE_THRESHOLD) {
           rt.state = 'walking';
           rt.stateChangeTime = now;
@@ -322,7 +372,6 @@ export function BullHerd() {
     // Separation pass: soft pairwise push-apart so bulls never overlap.
     // O(n²) is fine at herd scale (~27–50); relaxation spreads the
     // correction over a few frames so clusters ease apart without jitter.
-    const rts = indexed.map(({ tobu }) => runtimes.current.get(tobu.id));
     for (let a = 0; a < count; a++) {
       const ra = rts[a];
       if (!ra) continue;
@@ -353,9 +402,8 @@ export function BullHerd() {
       }
     }
 
-    // Containment + compose: keep everyone inside the fence and out of
-    // landmark footprints (also stops walk paths clipping through the barn
-    // or the parked tractor), then write instance matrices.
+    // Containment + compose: keep everyone inside the fence, out of landmark
+    // footprints, and clear of the moving tractor, then write matrices.
     indexed.forEach((_, i) => {
       const rt = rts[i];
       if (!rt) return;
@@ -370,6 +418,26 @@ export function BullHerd() {
           const out = (e.r - ed) * SEPARATION_RELAX;
           rt.position.x += (ex / ed) * out;
           rt.position.z += (ez / ed) * out;
+        }
+      }
+      // Moving tractor exclusion (US-005): corrected harder than static
+      // landmarks (0.6 vs 0.35/frame) so bulls clear the path before the
+      // tractor arrives — the tractor itself never slows or reroutes.
+      if (tractorState.active) {
+        let tx = rt.position.x - tractorState.x;
+        let tz = rt.position.z - tractorState.z;
+        let td2 = tx * tx + tz * tz;
+        if (td2 < TRACTOR_CLEARANCE * TRACTOR_CLEARANCE) {
+          if (td2 < 1e-6) {
+            // Dead-center: shove perpendicular to the tractor's heading.
+            tx = Math.cos(tractorState.heading);
+            tz = -Math.sin(tractorState.heading);
+            td2 = 1;
+          }
+          const td = Math.sqrt(td2);
+          const out = (TRACTOR_CLEARANCE - td) * 0.6;
+          rt.position.x += (tx / td) * out;
+          rt.position.z += (tz / td) * out;
         }
       }
       _quat.setFromAxisAngle(UP, rt.heading);

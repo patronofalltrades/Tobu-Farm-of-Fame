@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Sky, Environment, Clone } from '@react-three/drei';
+import { useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { MapControls, Sky, Environment, Clone } from '@react-three/drei';
 import { MeshStandardMaterial } from 'three';
-import type { WebGLProgramParametersWithUniforms } from 'three';
+import type { Group, WebGLProgramParametersWithUniforms } from 'three';
+import type { MapControls as MapControlsImpl } from 'three-stdlib';
 import { BullHerd } from './BullHerd';
 import { Barn } from './Barn';
 import { Signpost } from './Signpost';
@@ -12,9 +13,13 @@ import {
   approvedCount,
   computeCameraMaxDistance,
   computeFenceSegments,
+  computePanLimit,
   computePastureBound,
   computeSceneryRing,
+  tractorPoseAt,
+  type TractorPose,
 } from './farmLayout';
+import { tractorState } from './tractorState';
 import { useFarmStore } from '../stores/useFarmStore';
 import './models';
 
@@ -63,11 +68,36 @@ function ClonedField({
   );
 }
 
-/** Red tractor parked beside the barn. Matching exclusion zone lives in
- *  BullHerd's LANDMARK_EXCLUSIONS so bulls never clip through it. */
-function Tractor() {
+/** Tractor on a fixed rectangular patrol just inside the fence (US-004).
+ *  Pose is a pure function of elapsed time; each frame's position is also
+ *  published to `tractorState` so BullHerd treats it as a moving exclusion
+ *  zone (US-005 — bulls always yield, the tractor never stops). */
+function Tractor({ bound }: { bound: number }) {
   const { scene } = useTractorModel();
-  return <Clone object={scene} position={[-11.5, 0, -8.5]} rotation={[0, 0.7, 0]} />;
+  const groupRef = useRef<Group>(null);
+  const pose = useRef<TractorPose>({ x: 0, z: 0, heading: 0 });
+
+  useFrame((state) => {
+    const g = groupRef.current;
+    if (!g) return;
+    const p = tractorPoseAt(state.clock.elapsedTime, bound, pose.current);
+    g.position.set(p.x, 0, p.z);
+    g.rotation.y = p.heading;
+    tractorState.x = p.x;
+    tractorState.z = p.z;
+    tractorState.heading = p.heading;
+    tractorState.active = true;
+  });
+
+  useEffect(() => () => {
+    tractorState.active = false;
+  }, []);
+
+  return (
+    <group ref={groupRef}>
+      <Clone object={scene} />
+    </group>
+  );
 }
 
 /** Decorative scenery ring just outside the (auto-scaled) pasture (US-003, P0-1). */
@@ -156,6 +186,43 @@ function Ground() {
   );
 }
 
+/** Map-style controls: drag pans across the ground plane (no fixed pivot on
+ *  the mascot), pinch/scroll zooms, two-finger/right-drag rotates. The pan
+ *  target is clamped so users can't scroll past the scenery into the void. */
+function FarmControls({ bound }: { bound: number }) {
+  const controlsRef = useRef<MapControlsImpl>(null);
+  const panLimit = computePanLimit(bound);
+
+  const clampPan = () => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+    const t = controls.target;
+    const cx = Math.min(Math.max(t.x, -panLimit), panLimit);
+    const cz = Math.min(Math.max(t.z, -panLimit), panLimit);
+    if (cx !== t.x || cz !== t.z) {
+      // Shift the camera by the same delta so hitting the edge stops the
+      // pan cleanly instead of swinging the view direction.
+      controls.object.position.x += cx - t.x;
+      controls.object.position.z += cz - t.z;
+      t.x = cx;
+      t.z = cz;
+    }
+  };
+
+  return (
+    <MapControls
+      ref={controlsRef}
+      enablePan
+      enableZoom
+      screenSpacePanning={false}
+      maxPolarAngle={Math.PI / 2.2}
+      minDistance={6}
+      maxDistance={computeCameraMaxDistance(bound)}
+      onChange={clampPan}
+    />
+  );
+}
+
 export function Farm({ onBarnClick, onMascotClick, onSignpostClick }: FarmProps) {
   const tobus = useFarmStore((s) => s.tobus);
   const bound = computePastureBound(approvedCount(tobus));
@@ -173,17 +240,11 @@ export function Farm({ onBarnClick, onMascotClick, onSignpostClick }: FarmProps)
       <Scenery bound={bound} />
       <Mascot onClick={onMascotClick} />
       <Barn onClick={onBarnClick} />
-      <Tractor />
+      <Tractor bound={bound} />
       <Signpost onClick={onSignpostClick} />
       <BullHerd />
 
-      <OrbitControls
-        enablePan
-        enableZoom
-        maxPolarAngle={Math.PI / 2.2}
-        minDistance={6}
-        maxDistance={computeCameraMaxDistance(bound)}
-      />
+      <FarmControls bound={bound} />
     </Canvas>
   );
 }

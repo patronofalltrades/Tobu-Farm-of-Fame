@@ -32,6 +32,9 @@ const PALETTE = {
   darkWood: 0x6b4423,
   plush: 0xa9746e,
   dark: 0x3a2e2a,
+  // Mama Tobu's coat: near-black, not pure 0x000000 — flat shading needs a
+  // little reflectance headroom or the silhouette reads as a hole.
+  blackCoat: 0x26211e,
   // Natural scenery tones (greens/browns/grays — NOT the senyera palette)
   trunk: 0x7a5230,
   leaf: 0x4f8f3a,
@@ -211,26 +214,29 @@ function signpost() {
   return b;
 }
 
-/** Mascot: the big plushie Tobu with a red Senyera scarf. */
+/** Mama Tobu: black bull mascot with a red Senyera scarf
+ *  (prd-farm-navigation-behavior-fixes US-007). Cream horns/snout, white
+ *  eyes, and the scarf stay as accents so she still reads as THE mascot
+ *  rather than one more black-coated herd bull. */
 function mascot() {
   const b = new MeshBuilder();
-  b.box('plush', 1.5, 1.1, 1.9, 0, 0.85, -0.05);        // fat torso
-  b.box('plush', 1.0, 0.9, 0.8, 0, 1.5, 0.85, {});      // big head
+  b.box('blackCoat', 1.5, 1.1, 1.9, 0, 0.85, -0.05);    // fat torso
+  b.box('blackCoat', 1.0, 0.9, 0.8, 0, 1.5, 0.85, {});  // big head
   b.box('cream', 0.7, 0.45, 0.3, 0, 1.25, 1.28);        // snout
   b.box('cream', 0.55, 0.16, 0.16, -0.55, 1.95, 0.85, { ry: 0.3 });  // horns
   b.box('cream', 0.55, 0.16, 0.16, 0.55, 1.95, 0.85, { ry: -0.3 });
-  b.box('plush', 0.24, 0.12, 0.2, -0.62, 1.66, 0.8);    // ears
-  b.box('plush', 0.24, 0.12, 0.2, 0.62, 1.66, 0.8);
+  b.box('blackCoat', 0.24, 0.12, 0.2, -0.62, 1.66, 0.8); // ears
+  b.box('blackCoat', 0.24, 0.12, 0.2, 0.62, 1.66, 0.8);
   b.box('red', 1.06, 0.28, 0.86, 0, 1.12, 0.85);        // scarf
   for (const [x, z] of [[-0.5, 0.75], [0.5, 0.75]]) {
-    b.box('plush', 0.34, 0.4, 0.5, x, 0.2, z);          // front paws
+    b.box('blackCoat', 0.34, 0.4, 0.5, x, 0.2, z);      // front paws
   }
   for (const [x, z] of [[-0.55, -0.6], [0.55, -0.6]]) {
-    b.box('plush', 0.36, 0.5, 0.4, x, 0.25, z);         // haunches
+    b.box('blackCoat', 0.36, 0.5, 0.4, x, 0.25, z);     // haunches
   }
-  b.box('plush', 0.14, 0.5, 0.14, 0, 0.9, -1.05);       // tail
-  b.box('dark', 0.12, 0.12, 0.06, -0.22, 1.62, 1.26);   // eyes
-  b.box('dark', 0.12, 0.12, 0.06, 0.22, 1.62, 1.26);
+  b.box('blackCoat', 0.14, 0.5, 0.14, 0, 0.9, -1.05);   // tail
+  b.box('white', 0.12, 0.12, 0.06, -0.22, 1.62, 1.26);  // eyes (white on black)
+  b.box('white', 0.12, 0.12, 0.06, 0.22, 1.62, 1.26);
   return b;
 }
 

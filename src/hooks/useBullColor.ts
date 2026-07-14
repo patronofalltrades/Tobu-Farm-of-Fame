@@ -71,15 +71,9 @@ export function useBullColor(seed: string): string {
   return bullCoatFromSeed(seed).baseColor;
 }
 
-// Scatter bulls on a ring around the mascot, avoiding the landmark slots.
-// Adding `index` keeps repeat winners' bulls from overlapping each other.
-// With the wander FSM this is the SPAWN point, not a resting position.
-export function bullPositionFromSeed(seed: string, index: number): { x: number; z: number } {
-  const base = hashString(seed);
-  const angle = ((base % 360) + index * 53) * (Math.PI / 180);
-  const radius = 4 + ((base >> 4) % 5) + (index % 3) * 0.6;
-  return { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius };
-}
+// Spawn placement moved to farmLayout.computeSpawnPositions — the herd is now
+// laid out in one pass with guaranteed spacing instead of per-bull ring hashing
+// (prd-farm-navigation-behavior-fixes US-002).
 
 /** Deterministic PRNG (mulberry32) for each bull's wander decisions. */
 export function mulberry32(seedNum: number): () => number {
