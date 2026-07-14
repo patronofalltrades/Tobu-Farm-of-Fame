@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Trophy } from 'lucide-react';
 import { useFarmStore } from '../stores/useFarmStore';
 import { bullColorFromSeed } from '../hooks/useBullColor';
 
@@ -31,7 +32,7 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
   return (
     <div className="speech-bubble" onClick={onClose}>
       <div className="speech-content leaderboard" onClick={(e) => e.stopPropagation()}>
-        <h2>🏆 Wall of Fame</h2>
+        <h2><Trophy size={20} aria-hidden /> Wall of Fame</h2>
         <small>
           {totalAwards} Tobu{totalAwards === 1 ? '' : 's'} awarded · {winners} winner
           {winners === 1 ? '' : 's'}
@@ -46,9 +47,10 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
                 style={{ background: bullColorFromSeed(row.name) }}
                 aria-hidden
               />
-              <span className="leaderboard-name">{row.name}</span>
+              <span className="leaderboard-name" title={row.name}>{row.name}</span>
               <span className="leaderboard-wins">
-                {row.wins} 🐂
+                {row.wins}
+                <span className="visually-hidden"> {row.wins === 1 ? 'win' : 'wins'}</span>
               </span>
             </li>
           ))}

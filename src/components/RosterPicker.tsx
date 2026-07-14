@@ -85,7 +85,7 @@ export function RosterPicker() {
   return (
     <div className="roster-picker">
       <div className="roster-card">
-        <h2>Welcome to the farm 🐂</h2>
+        <h2>Welcome to the farm</h2>
         <p>Pick your name from the section roster to start reacting and submitting Tobus.</p>
 
         <div className="roster-combobox" ref={containerRef}>
@@ -95,6 +95,7 @@ export function RosterPicker() {
             role="combobox"
             aria-expanded={isOpen}
             aria-controls="roster-dropdown"
+            aria-label="Search your name"
             placeholder="Search your name…"
             value={query}
             onChange={(e) => {

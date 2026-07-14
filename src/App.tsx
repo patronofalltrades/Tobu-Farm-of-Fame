@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { TriangleAlert, Wrench } from 'lucide-react';
 import { Farm } from './scene/Farm';
 import { RosterPicker } from './components/RosterPicker';
 import { Leaderboard } from './components/Leaderboard';
@@ -68,9 +69,11 @@ function IntroToast() {
   if (hasSeenIntro) return null;
 
   return (
-    <button type="button" className="intro-toast" onClick={() => markIntroSeen()}>
-      Tap a bull to hear their story · Tap the barn to submit · Check the signpost for rankings
-    </button>
+    <div role="status" aria-live="polite">
+      <button type="button" className="intro-toast" onClick={() => markIntroSeen()}>
+        Tap a bull to hear their story · Tap the barn to submit · Check the signpost for rankings
+      </button>
+    </div>
   );
 }
 
@@ -120,6 +123,21 @@ function App() {
     }
     return null;
   }, [hasFirebaseError]);
+
+  // Escape closes the topmost overlay. BarnSubmit is excluded — it owns its
+  // own Escape handling so it can gate on an unsaved draft first.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || isBarnOpen) return;
+      if (isAdminPanelOpen) setIsAdminPanelOpen(false);
+      else if (isAdminPinOpen) setIsAdminPinOpen(false);
+      else if (isLeaderboardOpen) setIsLeaderboardOpen(false);
+      else if (isMascotOpen) setIsMascotOpen(false);
+      else if (selectedTobuId) selectTobu(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isBarnOpen, isAdminPanelOpen, isAdminPinOpen, isLeaderboardOpen, isMascotOpen, selectedTobuId, selectTobu]);
 
   const selected = tobus.find((t) => t.id === selectedTobuId);
   const selectedReaction = useMemo(() => {
@@ -178,25 +196,26 @@ function App() {
   return (
     <div className="app">
       <div className="topbar">
-        <span className="topbar-title">🐂 Tobu Farm</span>
+        <h1 className="topbar-title">Tobu Farm</h1>
         <div className="topbar-actions">
           {dataSourceMessage && (
-            <span className="topbar-status" title={dataSourceMessage} aria-label={dataSourceMessage}>
-              ⚠️
+            <span className="topbar-status" role="img" title={dataSourceMessage} aria-label={dataSourceMessage}>
+              <TriangleAlert size={18} aria-hidden />
             </span>
           )}
           <MuteButton />
           <button
             type="button"
             className={`admin-trigger${isAdmin ? ' is-admin' : ''}`}
-            title={isAdmin ? 'Open pending Tobu queue' : 'Admin PIN'}
+            title={isAdmin ? 'Open pending Tobu queue (right-click to log out of admin)' : 'Admin PIN'}
+            aria-label="Admin"
             onClick={() => {
               if (isAdmin) setIsAdminPanelOpen(true);
               else setIsAdminPinOpen(true);
             }}
             onContextMenu={(e) => { e.preventDefault(); if (isAdmin) setAdmin(false); }}
           >
-            {isAdmin ? '🛠' : ''}
+            <Wrench size={18} aria-hidden />
           </button>
         </div>
       </div>
@@ -274,7 +293,7 @@ function App() {
       {isMascotOpen && (
         <div className="speech-bubble" onClick={() => setIsMascotOpen(false)}>
           <div className="speech-content" onClick={(e) => e.stopPropagation()}>
-            <h2>🐂 Tobu Mascot</h2>
+            <h2>Tobu Mascot</h2>
             <p>
               Tobu is the IESE MBA 2027 Barcelona section mascot — a plushie bull awarded weekly for the funniest comment,
               wildest gesture, or biggest contribution to class.

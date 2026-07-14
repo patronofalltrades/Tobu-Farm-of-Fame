@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { PartyPopper, Warehouse } from 'lucide-react';
 import { ROSTER } from '../data/roster';
 import { useFarmStore } from '../stores/useFarmStore';
 import { addTobu, uploadTobuPhoto } from '../firebase/tobus';
@@ -38,6 +39,24 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
 
   const remaining = STORY_MAX - story.length;
   const canSubmit = Boolean(winner && story.trim() && !submitting);
+
+  // Unsaved-draft guard (prd-ui-ux-uplift US-006): backdrop tap, Cancel, and
+  // Escape all funnel through here so a half-written Tobu is never silently
+  // discarded.
+  const isDirty = Boolean(winner || winnerQuery.trim() || story.trim() || photo);
+  const requestClose = () => {
+    if (submitted || !isDirty || window.confirm('Discard this Tobu draft?')) onClose();
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const dirty = Boolean(winner || winnerQuery.trim() || story.trim() || photo);
+      if (submitted || !dirty || window.confirm('Discard this Tobu draft?')) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [submitted, winner, winnerQuery, story, photo, onClose]);
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -81,7 +100,7 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
     return (
       <div className="speech-bubble" onClick={onClose}>
         <div className="speech-content" onClick={(e) => e.stopPropagation()}>
-          <h2>🐂 Tobu submitted!</h2>
+          <h2><PartyPopper size={20} aria-hidden /> Tobu submitted!</h2>
           <p>
             Sent to the pending queue for admin approval. Once approved, a new bull is born onto the farm.
           </p>
@@ -92,18 +111,22 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
   }
 
   return (
-    <div className="speech-bubble" onClick={onClose}>
+    <div className="speech-bubble" onClick={requestClose}>
       <div className="speech-content barn-form" onClick={(e) => e.stopPropagation()}>
-        <h2>🏠 Submit a Tobu</h2>
+        <h2><Warehouse size={20} aria-hidden /> Submit a Tobu</h2>
         {!isFirebaseConfigured && (
           <small>Demo mode — submission stays local until Firebase is configured.</small>
         )}
 
-        <label className="barn-label">Winner</label>
+        <label className="barn-label" htmlFor="barn-winner">
+          Winner <span className="req" aria-hidden="true">*</span>
+        </label>
         <input
+          id="barn-winner"
           type="text"
           placeholder="Search the roster…"
           value={winner || winnerQuery}
+          aria-required="true"
           onChange={(e) => {
             setWinner('');
             setWinnerQuery(e.target.value);
@@ -121,11 +144,15 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
           </ul>
         )}
 
-        <label className="barn-label">The moment</label>
+        <label className="barn-label" htmlFor="barn-story">
+          The moment <span className="req" aria-hidden="true">*</span>
+        </label>
         <textarea
+          id="barn-story"
           placeholder="One-liner: what they said, did, or pulled off."
           value={story}
           maxLength={STORY_MAX}
+          aria-required="true"
           onChange={(e) => setStory(e.target.value)}
           rows={3}
         />
@@ -133,14 +160,15 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
 
         <div className="barn-row">
           <div>
-            <label className="barn-label">Term</label>
-            <select value={term} onChange={(e) => setTerm(Number(e.target.value) as 1 | 2 | 3)}>
+            <label className="barn-label" htmlFor="barn-term">Term</label>
+            <select id="barn-term" value={term} onChange={(e) => setTerm(Number(e.target.value) as 1 | 2 | 3)}>
               {TERMS.map((t) => <option key={t} value={t}>Term {t}</option>)}
             </select>
           </div>
           <div>
-            <label className="barn-label">Date</label>
+            <label className="barn-label" htmlFor="barn-date">Date</label>
             <input
+              id="barn-date"
               type="date"
               value={date}
               min={PROGRAM_START_DATE}
@@ -150,8 +178,9 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
           </div>
         </div>
 
-        <label className="barn-label">Photo (optional)</label>
+        <label className="barn-label" htmlFor="barn-photo">Photo (optional)</label>
         <input
+          id="barn-photo"
           type="file"
           accept="image/*"
           onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
@@ -159,10 +188,10 @@ export function BarnSubmit({ onClose, isFirebaseLive }: BarnSubmitProps) {
         />
         {!isFirebaseLive && <small>Photo uploads require Firebase to be configured.</small>}
 
-        {error && <p className="barn-error">{error}</p>}
+        {error && <p className="barn-error" role="alert">{error}</p>}
 
         <div className="barn-row">
-          <button type="button" onClick={onClose} disabled={submitting}>Cancel</button>
+          <button type="button" onClick={requestClose} disabled={submitting}>Cancel</button>
           <button type="button" onClick={() => void handleSubmit()} disabled={!canSubmit}>
             {submitting ? 'Submitting…' : 'Submit for approval'}
           </button>

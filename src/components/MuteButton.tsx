@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Volume2, VolumeX } from 'lucide-react';
 import { useFarmStore } from '../stores/useFarmStore';
 import { setAmbientMuted, syncAmbientPlayback, unlockAudio } from '../audio/useFarmAudio';
 
@@ -22,7 +23,7 @@ export function MuteButton() {
         syncAmbientPlayback();
       }}
     >
-      {isMuted ? '🔇' : '🔊'}
+      {isMuted ? <VolumeX size={20} aria-hidden /> : <Volume2 size={20} aria-hidden />}
     </button>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ClipboardList } from 'lucide-react';
 import { useFarmStore } from '../stores/useFarmStore';
 import { isFirebaseConfigured } from '../firebase/config';
 import { setTobuStatus, subscribeToTobus } from '../firebase/tobus';
@@ -53,14 +54,14 @@ export function AdminPanel({ onClose, isFirebaseLive }: AdminPanelProps) {
   return (
     <div className="speech-bubble" onClick={onClose}>
       <div className="speech-content admin-queue" onClick={(e) => e.stopPropagation()}>
-        <h2>🛠 Pending Tobus</h2>
+        <h2><ClipboardList size={20} aria-hidden /> Pending Tobus</h2>
         {!isFirebaseConfigured && (
           <small>Demo mode — decisions only affect this browser session.</small>
         )}
-        {error && <p className="barn-error">{error}</p>}
+        {error && <p className="barn-error" role="alert">{error}</p>}
 
         {pending.length === 0 ? (
-          <p>Nothing in the queue. 🎉</p>
+          <p>Nothing in the queue — all clear.</p>
         ) : (
           <ul>
             {pending.map((t) => (
@@ -70,7 +71,11 @@ export function AdminPanel({ onClose, isFirebaseLive }: AdminPanelProps) {
                 <small>Submitted by {t.submitted_by}</small>
                 {t.photo_url && (
                   <div>
-                    <img src={t.photo_url} alt="" style={{ maxWidth: '100%', borderRadius: 6, marginTop: 6 }} />
+                    <img
+                      src={t.photo_url}
+                      alt={`Photo submitted with ${t.winner_name}'s Tobu`}
+                      style={{ maxWidth: '100%', borderRadius: 6, marginTop: 6 }}
+                    />
                   </div>
                 )}
                 <div className="admin-actions">
@@ -84,7 +89,12 @@ export function AdminPanel({ onClose, isFirebaseLive }: AdminPanelProps) {
                   <button
                     className="reject"
                     disabled={busyId === t.id}
-                    onClick={() => void decide(t.id, false)}
+                    onClick={() => {
+                      // Destructive + irreversible via app rules — confirm first.
+                      if (window.confirm(`Reject ${t.winner_name}'s Tobu? This can't be undone.`)) {
+                        void decide(t.id, false);
+                      }
+                    }}
                   >
                     Reject
                   </button>

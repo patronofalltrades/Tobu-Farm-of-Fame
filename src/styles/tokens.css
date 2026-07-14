@@ -37,13 +37,15 @@
   /* Color roles */
   --color-surface: #ffffff;
   --color-surface-hover: #fff8d6;
+  --color-surface-subtle: #f3f3f3;
   --color-text-primary: #1a1a1a;
   --color-text-secondary: #666666;
-  --color-text-muted: #999999;
+  --color-text-muted: #767676; /* 4.54:1 on white — WCAG AA */
   --color-border: #e5e5e5;
   --color-border-subtle: #f1f1f1;
+  --color-border-soft: #d9e1f0;
   --color-backdrop: rgba(0, 0, 0, 0.4);
-  --color-success: #4CAF50;
+  --color-success: #2E7D32; /* 5.1:1 with white text — WCAG AA */
 
   /* Motion */
   --transition-fast: 120ms ease;
