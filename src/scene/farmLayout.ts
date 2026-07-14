@@ -129,6 +129,10 @@ export const TRACTOR_SPEED = 1.5; // units/sec, a touch quicker than a walking b
 /** Bulls keep this far from the tractor's center — larger than the model
  *  footprint so shoves happen before visual contact ever could. */
 export const TRACTOR_CLEARANCE = 2.8;
+/** The tractor halts while any bull is inside this radius — slightly wider
+ *  than the bulls' own clearance so it reacts before contact is even close
+ *  (prd-tractor-behavior-and-mascot-scale US-001). */
+export const TRACTOR_STOP_RADIUS = 3.4;
 
 export interface TractorPose {
   x: number;
@@ -148,11 +152,16 @@ export function computeTractorWaypoints(bound: number): Array<{ x: number; z: nu
 }
 
 /**
- * Position + facing along the rectangular loop at elapsed time t.
- * Pure function of time so the patrol needs no persistent state and
- * stays perfectly smooth across React remounts.
+ * Position + facing along the rectangular loop after `distance` units of
+ * travel. Distance-based (not clock-based) so the patrol can pause for
+ * bulls and resume from exactly the same spot (US-001) — the caller owns
+ * the accumulated distance and simply stops adding to it while blocked.
  */
-export function tractorPoseAt(t: number, bound: number, out: TractorPose): TractorPose {
+export function tractorPoseFromDistance(
+  distance: number,
+  bound: number,
+  out: TractorPose,
+): TractorPose {
   const pts = computeTractorWaypoints(bound);
   const legs: number[] = [];
   let perimeter = 0;
@@ -163,7 +172,7 @@ export function tractorPoseAt(t: number, bound: number, out: TractorPose): Tract
     legs.push(len);
     perimeter += len;
   }
-  let s = (t * TRACTOR_SPEED) % perimeter;
+  let s = distance % perimeter;
   for (let i = 0; i < 4; i++) {
     if (s <= legs[i]) {
       const a = pts[i];

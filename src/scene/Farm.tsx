@@ -8,7 +8,14 @@ import { BullHerd } from './BullHerd';
 import { Barn } from './Barn';
 import { Signpost } from './Signpost';
 import { Mascot } from './Mascot';
-import { useFenceModel, useTreeModel, useBushModel, useRockModel, useTractorModel } from './models';
+import {
+  useFenceModel,
+  useTreeModel,
+  useBushModel,
+  useRockModel,
+  useTractorModel,
+  useWheelModel,
+} from './models';
 import {
   approvedCount,
   computeCameraMaxDistance,
@@ -16,10 +23,12 @@ import {
   computePanLimit,
   computePastureBound,
   computeSceneryRing,
-  tractorPoseAt,
+  tractorPoseFromDistance,
+  TRACTOR_SPEED,
+  TRACTOR_STOP_RADIUS,
   type TractorPose,
 } from './farmLayout';
-import { tractorState } from './tractorState';
+import { herdState, tractorState } from './tractorState';
 import { useFarmStore } from '../stores/useFarmStore';
 import './models';
 
@@ -68,19 +77,36 @@ function ClonedField({
   );
 }
 
-/** Tractor on a fixed rectangular patrol just inside the fence (US-004).
- *  Pose is a pure function of elapsed time; each frame's position is also
- *  published to `tractorState` so BullHerd treats it as a moving exclusion
- *  zone (US-005 — bulls always yield, the tractor never stops). */
+// Round wheels (US-002): one GLB cloned at two scales. Positions match the
+// old box-wheel slots; y = scaled radius so tires touch the ground.
+const WHEEL_SLOTS: Array<{ position: [number, number, number]; scale: number }> = [
+  { position: [-0.62, 0.475, -0.75], scale: 0.95 }, // big rear
+  { position: [0.62, 0.475, -0.75], scale: 0.95 },
+  { position: [-0.53, 0.25, 0.75], scale: 0.5 },    // small front
+  { position: [0.53, 0.25, 0.75], scale: 0.5 },
+];
+
+/** Tractor on a fixed rectangular patrol just inside the fence (US-004),
+ *  publishing its pose to `tractorState` for BullHerd's moving exclusion
+ *  (US-005). Progress is accumulated distance, not clock time: while any
+ *  bull is inside TRACTOR_STOP_RADIUS the accumulator simply stops growing,
+ *  so the tractor halts in place and later resumes from the exact same
+ *  spot (prd-tractor-behavior-and-mascot-scale US-001). */
 function Tractor({ bound }: { bound: number }) {
   const { scene } = useTractorModel();
+  const wheel = useWheelModel();
   const groupRef = useRef<Group>(null);
   const pose = useRef<TractorPose>({ x: 0, z: 0, heading: 0 });
+  const traveled = useRef(0);
 
-  useFrame((state) => {
+  useFrame((_, delta) => {
     const g = groupRef.current;
     if (!g) return;
-    const p = tractorPoseAt(state.clock.elapsedTime, bound, pose.current);
+    const dt = Math.min(delta, 0.1); // clamp tab-switch spikes, same as BullHerd
+    if (herdState.minDistToTractor > TRACTOR_STOP_RADIUS) {
+      traveled.current += TRACTOR_SPEED * dt;
+    }
+    const p = tractorPoseFromDistance(traveled.current, bound, pose.current);
     g.position.set(p.x, 0, p.z);
     g.rotation.y = p.heading;
     tractorState.x = p.x;
@@ -96,6 +122,9 @@ function Tractor({ bound }: { bound: number }) {
   return (
     <group ref={groupRef}>
       <Clone object={scene} />
+      {WHEEL_SLOTS.map((w, i) => (
+        <Clone key={i} object={wheel.scene} position={w.position} scale={w.scale} />
+      ))}
     </group>
   );
 }

@@ -19,7 +19,7 @@ import {
 import { useBullModel } from './models';
 import { mergeGltfMeshes } from './gltfUtils';
 import { computePastureBound, computeSpawnPositions, TRACTOR_CLEARANCE } from './farmLayout';
-import { tractorState } from './tractorState';
+import { herdState, tractorState } from './tractorState';
 import type { Tobu } from '../types';
 import { playMoo } from '../audio/useFarmAudio';
 
@@ -43,7 +43,7 @@ const TURN_RATE = 4; // rad/sec toward travel heading
 // from tractorState each frame (US-005).
 const LANDMARK_EXCLUSIONS: Array<{ x: number; z: number; r: number }> = [
   { x: -8, z: -6, r: 2.5 }, // barn
-  { x: 0, z: 0, r: 2.0 },   // mascot
+  { x: 0, z: 0, r: 2.6 },   // mascot (scaled to 1.5× — footprint grew with her)
   { x: 8, z: -4, r: 1.5 },  // signpost
 ];
 
@@ -404,6 +404,7 @@ export function BullHerd() {
 
     // Containment + compose: keep everyone inside the fence, out of landmark
     // footprints, and clear of the moving tractor, then write matrices.
+    let minTractorD2 = Infinity;
     indexed.forEach((_, i) => {
       const rt = rts[i];
       if (!rt) return;
@@ -427,6 +428,7 @@ export function BullHerd() {
         let tx = rt.position.x - tractorState.x;
         let tz = rt.position.z - tractorState.z;
         let td2 = tx * tx + tz * tz;
+        if (td2 < minTractorD2) minTractorD2 = td2;
         if (td2 < TRACTOR_CLEARANCE * TRACTOR_CLEARANCE) {
           if (td2 < 1e-6) {
             // Dead-center: shove perpendicular to the tractor's heading.
@@ -444,6 +446,9 @@ export function BullHerd() {
       _matrix.compose(rt.position, _quat, _scale);
       mesh.setMatrixAt(i, _matrix);
     });
+
+    // Publish for the tractor's stop-for-bull check (US-001).
+    herdState.minDistToTractor = Math.sqrt(minTractorD2);
 
     mesh.instanceMatrix.needsUpdate = true;
     if (stateAttrDirty) {

@@ -10,3 +10,11 @@ export const tractorState = {
   /** False until the Tractor component's first frame writes a real pose. */
   active: false,
 };
+
+// Reverse channel (US-001): BullHerd writes the distance from the tractor to
+// the nearest bull each frame; the Tractor reads it to decide whether to halt.
+// One frame of staleness is inherent (Tractor's useFrame runs before
+// BullHerd's, in mount order) and harmless at these speeds.
+export const herdState = {
+  minDistToTractor: Infinity,
+};

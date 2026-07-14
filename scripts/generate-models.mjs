@@ -90,6 +90,38 @@ class MeshBuilder {
     for (const f of faces) g.indices.push(base + f);
   }
 
+  /**
+   * Low-poly cylinder with its axle along X (wheels). Two vertex rings in
+   * the YZ plane + end-cap fans; materials are double-sided so winding is
+   * forgiving, same as every other primitive here.
+   */
+  cylinder(mat, radius, width, segments, tx, ty, tz, { color = [0, 0, 0] } = {}) {
+    const g = this.group(mat);
+    const base = g.positions.length / 3;
+    const hw = width / 2;
+    for (const x of [-hw, hw]) {
+      for (let i = 0; i < segments; i++) {
+        const a = (i / segments) * Math.PI * 2;
+        g.positions.push(x + tx, Math.cos(a) * radius + ty, Math.sin(a) * radius + tz);
+        g.colors.push(...color);
+      }
+    }
+    const cL = base + segments * 2;
+    g.positions.push(-hw + tx, ty, tz);
+    g.colors.push(...color);
+    const cR = cL + 1;
+    g.positions.push(hw + tx, ty, tz);
+    g.colors.push(...color);
+    for (let i = 0; i < segments; i++) {
+      const j = (i + 1) % segments;
+      const l0 = base + i, l1 = base + j;
+      const r0 = base + segments + i, r1 = base + segments + j;
+      g.indices.push(l0, l1, r0, l1, r1, r0); // side wall
+      g.indices.push(cL, l1, l0);             // left cap
+      g.indices.push(cR, r0, r1);             // right cap
+    }
+  }
+
   /** Triangular prism, ridge along X (rooftops). */
   prism(mat, sx, sy, sz, tx, ty, tz, { color = [0, 0, 0] } = {}) {
     const g = this.group(mat);
@@ -269,6 +301,8 @@ function rock() {
 }
 
 /** Classic red tractor, parked. Origin at ground, faces +Z (hood forward). */
+/** Tractor body only — round wheels are a separate GLB (wheel.glb) cloned
+ *  at two scales by Farm.tsx (prd-tractor-behavior-and-mascot-scale US-002). */
 function tractor() {
   const b = new MeshBuilder();
   b.box('red', 0.9, 0.55, 1.5, 0, 0.85, 0.35);          // hood
@@ -280,11 +314,18 @@ function tractor() {
   b.box('dark', 0.1, 0.6, 0.1, 0.28, 1.4, 0.75);        // exhaust stack
   b.box('yellow', 0.94, 0.1, 1.54, 0, 1.16, 0.35);      // hood trim stripe
   b.box('yellow', 0.5, 0.28, 0.1, 0, 0.72, 1.12);       // front grille
-  for (const x of [-0.62, 0.62]) {
-    b.box('dark', 0.22, 0.95, 0.95, x, 0.475, -0.75);   // big rear wheels
-    b.box('yellow', 0.24, 0.3, 0.3, x, 0.475, -0.75);   // rear hubs
-    b.box('dark', 0.16, 0.5, 0.5, x * 0.85, 0.25, 0.75); // front wheels
-  }
+  b.box('dark', 1.0, 0.16, 0.5, 0, 0.44, -0.75);        // rear axle housing
+  b.box('dark', 0.8, 0.12, 0.3, 0, 0.3, 0.75);          // front axle
+  return b;
+}
+
+/** One round wheel, axle along X, origin at hub center. Dark tire + yellow
+ *  hub; 10 segments reads as round at farm camera distance while staying
+ *  unmistakably low-poly. Cloned at two scales for rear/front wheels. */
+function wheel() {
+  const b = new MeshBuilder();
+  b.cylinder('dark', 0.5, 0.28, 10, 0, 0, 0);     // tire
+  b.cylinder('yellow', 0.2, 0.34, 10, 0, 0, 0);   // hub (slightly proud)
   return b;
 }
 
@@ -308,4 +349,5 @@ await write('tree', tree());
 await write('bush', bush());
 await write('rock', rock());
 await write('tractor', tractor());
+await write('wheel', wheel());
 console.log('Done.');
