@@ -1,8 +1,11 @@
 // Deterministic visuals + placement from a stable seed (winner name).
-// Each winner gets a coat: a base color plus a spot-pattern seed. The same
-// winner always produces the identical coat, so repeat winners' bulls match
-// (PRD US-004). The seed also picks the spawn point so the farm looks stable
-// across reloads before the bulls start wandering.
+// Each winner owns a coat *hue family*; each of their wins gets a distinct
+// shade within it (prd-farm-polish-v2 P0-6). variantIndex is the winner's
+// occurrence index (0 = first win) — same-family-but-different bulls make
+// repeat wins legible in the herd. Determinism depends on a stable Tobu
+// ordering, which subscribeToTobus guarantees (sorted by date, then id).
+// The seed also picks the spawn point so the farm looks stable across
+// reloads before the bulls start wandering.
 
 export function hashString(input: string): number {
   let hash = 0;
@@ -40,12 +43,21 @@ const COAT_HUES: Array<[number, number, number]> = [
   [0, 0, 62],    // silver
 ];
 
-export function bullCoatFromSeed(seed: string): BullCoat {
+export function bullCoatFromSeed(seed: string, variantIndex = 0): BullCoat {
   const h = hashString(seed);
-  const [hue, sat, light] = COAT_HUES[h % COAT_HUES.length];
+  const [hue, sat, baseLight] = COAT_HUES[h % COAT_HUES.length];
+  // Repeat wins keep the hue (family identity) but step lightness/saturation
+  // and re-roll the spot layout, so no two of a winner's bulls look identical.
+  // First wins (variantIndex 0) reproduce the pre-variant coat exactly.
+  const light = variantIndex === 0
+    ? baseLight
+    : Math.min(85, Math.max(18, baseLight + (variantIndex % 2 === 1 ? 16 : -14) * Math.ceil(variantIndex / 2)));
+  const satAdj = variantIndex === 0
+    ? sat
+    : Math.min(80, Math.max(12, sat + (variantIndex % 2 === 1 ? -8 : 10)));
   return {
-    baseColor: `hsl(${hue}, ${sat}%, ${light}%)`,
-    spotSeed: ((h >> 8) % 1000) / 1000,
+    baseColor: `hsl(${hue}, ${satAdj}%, ${light}%)`,
+    spotSeed: (((h >> 8) % 1000) / 1000 + variantIndex * 0.137) % 1,
     spotIntensity: 0.35 + (((h >> 16) % 100) / 100) * 0.45,
   };
 }

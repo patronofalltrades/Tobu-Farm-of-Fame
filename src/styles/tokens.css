@@ -1,0 +1,51 @@
+/* Design tokens — single source of truth for overlay UI (prd-farm-polish-v2 P0-3).
+   Patterns borrowed from mature systems (4px spacing grid à la Polaris/Gestalt,
+   capped type scale, role-based colors); the Barcelona palette stays the brand. */
+:root {
+  /* Spacing — 4px base grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --shadow-modal: 0 10px 40px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.12);
+  --shadow-toast: 0 8px 28px rgba(0, 0, 0, 0.35);
+
+  /* Type scale — capped at 6 sizes app-wide */
+  --font-size-h1: 22px;
+  --font-size-h2: 18px;
+  --font-size-h3: 16px;
+  --font-size-h4: 13px;
+  --font-size-body: 14px;
+  --font-size-small: 12px;
+
+  /* Brand palette (Barcelona / Senyera) */
+  --color-brand-red: #D50032;
+  --color-brand-yellow: #FFCD00;
+  --color-brand-blue: #004D98;
+
+  /* Color roles */
+  --color-surface: #ffffff;
+  --color-surface-hover: #fff8d6;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #666666;
+  --color-text-muted: #999999;
+  --color-border: #e5e5e5;
+  --color-border-subtle: #f1f1f1;
+  --color-backdrop: rgba(0, 0, 0, 0.4);
+  --color-success: #4CAF50;
+
+  /* Motion */
+  --transition-fast: 120ms ease;
+  --transition-modal: 200ms ease;
+}

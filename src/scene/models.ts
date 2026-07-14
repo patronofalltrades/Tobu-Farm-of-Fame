@@ -8,6 +8,7 @@ const FENCE_URL = '/models/fence.glb';
 const TREE_URL = '/models/tree.glb';
 const BUSH_URL = '/models/bush.glb';
 const ROCK_URL = '/models/rock.glb';
+const TRACTOR_URL = '/models/tractor.glb';
 
 useGLTF.preload(BULL_URL);
 useGLTF.preload(BARN_URL);
@@ -17,6 +18,7 @@ useGLTF.preload(FENCE_URL);
 useGLTF.preload(TREE_URL);
 useGLTF.preload(BUSH_URL);
 useGLTF.preload(ROCK_URL);
+useGLTF.preload(TRACTOR_URL);
 
 export const MODEL_URLS = {
   bull: BULL_URL,
@@ -27,6 +29,7 @@ export const MODEL_URLS = {
   tree: TREE_URL,
   bush: BUSH_URL,
   rock: ROCK_URL,
+  tractor: TRACTOR_URL,
 } as const;
 
 export function useBullModel() {
@@ -59,4 +62,8 @@ export function useBushModel() {
 
 export function useRockModel() {
   return useGLTF(ROCK_URL);
+}
+
+export function useTractorModel() {
+  return useGLTF(TRACTOR_URL);
 }

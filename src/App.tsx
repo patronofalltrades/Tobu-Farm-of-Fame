@@ -217,7 +217,11 @@ function App() {
         <div className="speech-bubble" onClick={() => selectTobu(null)}>
           <div className="speech-content" onClick={(e) => e.stopPropagation()}>
             <h2>{selected.winner_name}</h2>
-            <p>"{selected.story}"</p>
+            {/* Stories carry their own quote marks where the moment is a quote. */}
+            <p>{selected.story}</p>
+            {selected.commentary && (
+              <h4 className="tobu-commentary">{selected.commentary}</h4>
+            )}
             {!userName && (
               <small className="reaction-hint">Pick your name from the roster to react.</small>
             )}

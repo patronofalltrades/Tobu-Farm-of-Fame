@@ -27,7 +27,16 @@ export function subscribeToTobus(
   const ref = status === 'all' ? tobusCol : query(tobusCol, where('status', '==', status));
   return onSnapshot(
     ref,
-    (snap) => cb(snap.docs.map((d) => mapDoc(d.id, d.data()))),
+    (snap) => {
+      // Deterministic order (date, then id): snapshot order is unspecified, and
+      // repeat-winner coat variants are assigned by occurrence index — an
+      // unstable order would swap which win gets which shade between reloads.
+      // (`created_at` can't be the key: seeded docs store numbers, live
+      // submissions store Firestore Timestamps.)
+      const tobus = snap.docs.map((d) => mapDoc(d.id, d.data()));
+      tobus.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+      cb(tobus);
+    },
     (error) => onError?.(error),
   );
 }

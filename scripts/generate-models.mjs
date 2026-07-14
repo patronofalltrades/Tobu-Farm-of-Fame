@@ -113,7 +113,11 @@ class MeshBuilder {
       const material = doc.createMaterial(matKey)
         .setBaseColorFactor(hexToLinearRgba(PALETTE[matKey] ?? PALETTE.white))
         .setRoughnessFactor(1)
-        .setMetallicFactor(0);
+        .setMetallicFactor(0)
+        // Double-sided: the prism's gable end-caps are wound inward and got
+        // backface-culled, making roofs read as hollow. Cheap fix for tiny
+        // flat-shaded meshes; no visual downside at this poly count.
+        .setDoubleSided(true);
       const posAcc = doc.createAccessor().setType('VEC3')
         .setArray(new Float32Array(g.positions)).setBuffer(buffer);
       const idxAcc = doc.createAccessor().setType('SCALAR')
@@ -175,16 +179,25 @@ function bull() {
   return b;
 }
 
-/** Red barn, blue gambrel roof, white trim — full Barcelona palette. */
+/** Classic brown barn: wood-brown body, solid dark-brown roof, white trim.
+ *  Detail pass (prd-farm-polish-v2 P0-2): eave overhang, siding plank
+ *  lines, gable-end window, chimney. Same flat-shaded toy conventions. */
 function barn() {
   const b = new MeshBuilder();
-  b.box('red', 4.2, 2.4, 3.4, 0, 1.2, 0);
-  b.prism('blue', 4.4, 1.5, 3.8, 0, 2.4, 0);
+  b.box('wood', 4.2, 2.4, 3.4, 0, 1.2, 0);            // classic brown body
+  b.prism('darkWood', 4.7, 1.5, 4.1, 0, 2.4, 0);      // solid dark roof, eave overhang
   b.box('white', 1.2, 1.5, 0.15, 0, 0.75, 1.72);      // door
   b.box('yellow', 0.7, 0.7, 0.12, 0, 2.75, 1.78);     // hayloft window
   b.box('white', 0.16, 0.9, 0.16, -1.6, 0.45, 1.74);  // door posts
   b.box('white', 0.16, 0.9, 0.16, 1.6, 0.45, 1.74);
   b.box('white', 4.3, 0.18, 3.5, 0, 2.34, 0);         // eave trim band
+  for (const y of [0.55, 1.0, 1.45, 1.9]) {           // siding plank lines
+    b.box('dark', 4.26, 0.05, 3.46, 0, y, 0);
+  }
+  b.box('white', 0.08, 0.62, 0.62, 2.13, 1.5, -0.4);  // gable window frame
+  b.box('yellow', 0.08, 0.5, 0.5, 2.17, 1.5, -0.4);   // gable window pane
+  b.box('rockGray', 0.35, 0.9, 0.35, 1.2, 3.35, 0.6); // stone chimney (pokes through roof)
+  b.box('dark', 0.45, 0.1, 0.45, 1.2, 3.85, 0.6);     // chimney cap
   return b;
 }
 
@@ -249,6 +262,26 @@ function rock() {
   return b;
 }
 
+/** Classic red tractor, parked. Origin at ground, faces +Z (hood forward). */
+function tractor() {
+  const b = new MeshBuilder();
+  b.box('red', 0.9, 0.55, 1.5, 0, 0.85, 0.35);          // hood
+  b.box('red', 1.0, 0.75, 0.9, 0, 0.95, -0.75);         // cab base
+  b.box('dark', 0.55, 0.5, 0.12, 0, 1.55, -1.12);       // seat back
+  b.box('dark', 0.55, 0.12, 0.5, 0, 1.35, -0.9);        // seat
+  b.box('dark', 0.08, 0.35, 0.08, 0, 1.35, -0.35);      // steering column
+  b.box('dark', 0.3, 0.06, 0.3, 0, 1.55, -0.3);         // steering wheel
+  b.box('dark', 0.1, 0.6, 0.1, 0.28, 1.4, 0.75);        // exhaust stack
+  b.box('yellow', 0.94, 0.1, 1.54, 0, 1.16, 0.35);      // hood trim stripe
+  b.box('yellow', 0.5, 0.28, 0.1, 0, 0.72, 1.12);       // front grille
+  for (const x of [-0.62, 0.62]) {
+    b.box('dark', 0.22, 0.95, 0.95, x, 0.475, -0.75);   // big rear wheels
+    b.box('yellow', 0.24, 0.3, 0.3, x, 0.475, -0.75);   // rear hubs
+    b.box('dark', 0.16, 0.5, 0.5, x * 0.85, 0.25, 0.75); // front wheels
+  }
+  return b;
+}
+
 /** One fence segment: two posts + two rails, 7 units wide along X. */
 function fence() {
   const b = new MeshBuilder();
@@ -268,4 +301,5 @@ await write('fence', fence());
 await write('tree', tree());
 await write('bush', bush());
 await write('rock', rock());
+await write('tractor', tractor());
 console.log('Done.');

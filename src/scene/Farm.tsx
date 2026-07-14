@@ -7,7 +7,15 @@ import { BullHerd } from './BullHerd';
 import { Barn } from './Barn';
 import { Signpost } from './Signpost';
 import { Mascot } from './Mascot';
-import { useFenceModel, useTreeModel, useBushModel, useRockModel } from './models';
+import { useFenceModel, useTreeModel, useBushModel, useRockModel, useTractorModel } from './models';
+import {
+  approvedCount,
+  computeCameraMaxDistance,
+  computeFenceSegments,
+  computePastureBound,
+  computeSceneryRing,
+} from './farmLayout';
+import { useFarmStore } from '../stores/useFarmStore';
 import './models';
 
 // Sky/environment horizon tone — fog fades distant geometry into this so the
@@ -20,16 +28,10 @@ interface FarmProps {
   onSignpostClick?: () => void;
 }
 
-/** Fence ring from repeated 7-unit GLB segments around the ±14 pasture. */
-function Fences() {
+/** Fence ring from repeated 7-unit GLB segments around the computed pasture. */
+function Fences({ bound }: { bound: number }) {
   const { scene } = useFenceModel();
-  const segments: Array<{ position: [number, number, number]; rotY: number }> = [];
-  for (const x of [-10.5, -3.5, 3.5, 10.5]) {
-    segments.push({ position: [x, 0, -14], rotY: 0 });
-    segments.push({ position: [x, 0, 14], rotY: 0 });
-    segments.push({ position: [-14, 0, x], rotY: Math.PI / 2 });
-    segments.push({ position: [14, 0, x], rotY: Math.PI / 2 });
-  }
+  const segments = useMemo(() => computeFenceSegments(bound), [bound]);
   return (
     <group>
       {segments.map((s, i) => (
@@ -39,45 +41,13 @@ function Fences() {
   );
 }
 
-interface Placement {
-  position: [number, number, number];
-  rotY: number;
-  scale: number;
-}
-
-// Deterministic, hand-authored placements outside the ±14 fenced pasture so the
-// farm looks stable across reloads and never overlaps landmarks or wander bounds.
-const TREE_PLACEMENTS: Placement[] = [
-  { position: [-22, 0, -20], rotY: 0.4, scale: 1.1 },
-  { position: [21, 0, -23], rotY: 1.9, scale: 1.25 },
-  { position: [-25, 0, 9], rotY: 2.7, scale: 1.0 },
-  { position: [24, 0, 16], rotY: 0.9, scale: 1.15 },
-  { position: [-4, 0, -25], rotY: 3.5, scale: 1.2 },
-  { position: [8, 0, 24], rotY: 5.1, scale: 1.05 },
-  { position: [-18, 0, 23], rotY: 1.2, scale: 0.95 },
-  { position: [19, 0, -6], rotY: 4.2, scale: 1.1 },
-];
-
-const BUSH_PLACEMENTS: Placement[] = [
-  { position: [-16.5, 0, 6], rotY: 0.5, scale: 1.0 },
-  { position: [16.5, 0, -9], rotY: 2.2, scale: 1.2 },
-  { position: [6, 0, 16.5], rotY: 4.0, scale: 0.9 },
-  { position: [-8, 0, -16.5], rotY: 1.5, scale: 1.1 },
-  { position: [15.5, 0, 15.5], rotY: 3.1, scale: 1.0 },
-  { position: [-15.5, 0, -15.5], rotY: 5.4, scale: 1.15 },
-  { position: [0, 0, 17], rotY: 0.8, scale: 0.85 },
-];
-
-const ROCK_PLACEMENTS: Placement[] = [
-  { position: [18, 0, 4], rotY: 0.3, scale: 1.0 },
-  { position: [-17.5, 0, -3], rotY: 2.6, scale: 1.2 },
-  { position: [4, 0, -17.5], rotY: 4.4, scale: 0.9 },
-  { position: [-6, 0, 17.5], rotY: 1.1, scale: 1.1 },
-  { position: [22, 0, -14], rotY: 3.7, scale: 1.3 },
-  { position: [-21, 0, 17], rotY: 5.0, scale: 1.0 },
-];
-
-function ClonedField({ scene, placements }: { scene: import('three').Object3D; placements: Placement[] }) {
+function ClonedField({
+  scene,
+  placements,
+}: {
+  scene: import('three').Object3D;
+  placements: ReturnType<typeof computeSceneryRing>;
+}) {
   return (
     <group>
       {placements.map((p, i) => (
@@ -93,16 +63,26 @@ function ClonedField({ scene, placements }: { scene: import('three').Object3D; p
   );
 }
 
-/** Static decorative scenery scattered outside the pasture (US-003). */
-function Scenery() {
+/** Red tractor parked beside the barn. Matching exclusion zone lives in
+ *  BullHerd's LANDMARK_EXCLUSIONS so bulls never clip through it. */
+function Tractor() {
+  const { scene } = useTractorModel();
+  return <Clone object={scene} position={[-11.5, 0, -8.5]} rotation={[0, 0.7, 0]} />;
+}
+
+/** Decorative scenery ring just outside the (auto-scaled) pasture (US-003, P0-1). */
+function Scenery({ bound }: { bound: number }) {
   const tree = useTreeModel();
   const bush = useBushModel();
   const rock = useRockModel();
+  const trees = useMemo(() => computeSceneryRing(bound, 'tree', 8), [bound]);
+  const bushes = useMemo(() => computeSceneryRing(bound, 'bush', 7), [bound]);
+  const rocks = useMemo(() => computeSceneryRing(bound, 'rock', 6), [bound]);
   return (
     <group>
-      <ClonedField scene={tree.scene} placements={TREE_PLACEMENTS} />
-      <ClonedField scene={bush.scene} placements={BUSH_PLACEMENTS} />
-      <ClonedField scene={rock.scene} placements={ROCK_PLACEMENTS} />
+      <ClonedField scene={tree.scene} placements={trees} />
+      <ClonedField scene={bush.scene} placements={bushes} />
+      <ClonedField scene={rock.scene} placements={rocks} />
     </group>
   );
 }
@@ -177,6 +157,8 @@ function Ground() {
 }
 
 export function Farm({ onBarnClick, onMascotClick, onSignpostClick }: FarmProps) {
+  const tobus = useFarmStore((s) => s.tobus);
+  const bound = computePastureBound(approvedCount(tobus));
   return (
     <Canvas shadows={false} camera={{ position: [0, 8, 14], fov: 50 }}>
       <fog attach="fog" args={[SKY_COLOR, 32, 90]} />
@@ -187,10 +169,11 @@ export function Farm({ onBarnClick, onMascotClick, onSignpostClick }: FarmProps)
 
       <Ground />
 
-      <Fences />
-      <Scenery />
+      <Fences bound={bound} />
+      <Scenery bound={bound} />
       <Mascot onClick={onMascotClick} />
       <Barn onClick={onBarnClick} />
+      <Tractor />
       <Signpost onClick={onSignpostClick} />
       <BullHerd />
 
@@ -199,7 +182,7 @@ export function Farm({ onBarnClick, onMascotClick, onSignpostClick }: FarmProps)
         enableZoom
         maxPolarAngle={Math.PI / 2.2}
         minDistance={6}
-        maxDistance={30}
+        maxDistance={computeCameraMaxDistance(bound)}
       />
     </Canvas>
   );

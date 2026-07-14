@@ -9,6 +9,8 @@
     "generate:models": "node scripts/generate-models.mjs",
     "generate:audio": "node scripts/generate-audio.mjs",
     "seed": "tsx scripts/seed.ts",
+    "seed:real": "tsx scripts/seed-real.ts",
+    "seed:term23": "tsx scripts/seed-real.ts seed-term-2-3.json",
     "lint": "eslint .",
     "preview": "vite preview"
   },

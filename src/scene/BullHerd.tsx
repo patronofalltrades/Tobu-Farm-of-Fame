@@ -19,6 +19,7 @@ import {
 } from '../hooks/useBullColor';
 import { useBullModel } from './models';
 import { mergeGltfMeshes } from './gltfUtils';
+import { computePastureBound } from './farmLayout';
 import type { Tobu } from '../types';
 import { playMoo } from '../audio/useFarmAudio';
 
@@ -35,14 +36,20 @@ const ARRIVE_THRESHOLD = 0.15;
 const WANDER_RADIUS = 3;
 const IDLE_MIN = 2;
 const IDLE_MAX = 6;
-const PASTURE_BOUND = 13;
+const FENCE_MARGIN = 1; // wander stays this far inside the fence line
 const TURN_RATE = 4; // rad/sec toward travel heading
 
 const LANDMARK_EXCLUSIONS: Array<{ x: number; z: number; r: number }> = [
-  { x: -8, z: -6, r: 2.5 }, // barn
-  { x: 0, z: 0, r: 2.0 },   // mascot
-  { x: 8, z: -4, r: 1.5 },  // signpost
+  { x: -8, z: -6, r: 2.5 },     // barn
+  { x: 0, z: 0, r: 2.0 },       // mascot
+  { x: 8, z: -4, r: 1.5 },      // signpost
+  { x: -11.5, z: -8.5, r: 2.0 }, // tractor (Farm.tsx <Tractor /> position)
 ];
+
+// Herd separation: bulls softly push each other apart so they never stand
+// inside one another. Center-to-center target distance ≈ one body length.
+const MIN_SEPARATION = 1.4;
+const SEPARATION_RELAX = 0.35; // fraction of overlap corrected per frame (softens jitter)
 
 interface BullRuntime {
   position: Vector3;
@@ -65,12 +72,12 @@ function insideExclusion(x: number, z: number): boolean {
   );
 }
 
-function pickTarget(from: Vector3, rng: () => number, out: Vector3): void {
+function pickTarget(from: Vector3, rng: () => number, out: Vector3, wanderBound: number): void {
   for (let attempt = 0; attempt < 5; attempt++) {
     const angle = rng() * Math.PI * 2;
     const dist = 0.8 + rng() * WANDER_RADIUS;
-    const x = Math.min(Math.max(from.x + Math.cos(angle) * dist, -PASTURE_BOUND), PASTURE_BOUND);
-    const z = Math.min(Math.max(from.z + Math.sin(angle) * dist, -PASTURE_BOUND), PASTURE_BOUND);
+    const x = Math.min(Math.max(from.x + Math.cos(angle) * dist, -wanderBound), wanderBound);
+    const z = Math.min(Math.max(from.z + Math.sin(angle) * dist, -wanderBound), wanderBound);
     if (!insideExclusion(x, z)) {
       out.set(x, 0, z);
       return;
@@ -206,6 +213,7 @@ export function BullHerd() {
   }, [tobus]);
 
   const count = indexed.length;
+  const wanderBound = computePastureBound(count) - FENCE_MARGIN;
 
   // Per-instance shader attributes, rebuilt when the herd roster changes.
   const instanceAttrs = useMemo(() => {
@@ -215,7 +223,7 @@ export function BullHerd() {
     const spotSeed = new Float32Array(count);
     const spotIntensity = new Float32Array(count);
     indexed.forEach(({ tobu, index }, i) => {
-      const coat = bullCoatFromSeed(tobu.bull_pattern_seed);
+      const coat = bullCoatFromSeed(tobu.bull_pattern_seed, index);
       phase[i] = (hashString(tobu.bull_pattern_seed + index) % 628) / 100;
       spotSeed[i] = coat.spotSeed;
       spotIntensity[i] = coat.spotIntensity;
@@ -258,7 +266,7 @@ export function BullHerd() {
           rng,
         });
       }
-      _color.setStyle(bullCoatFromSeed(tobu.bull_pattern_seed).baseColor);
+      _color.setStyle(bullCoatFromSeed(tobu.bull_pattern_seed, index).baseColor);
       mesh.setColorAt(i, _color);
     });
     for (const id of runtimes.current.keys()) {
@@ -298,7 +306,7 @@ export function BullHerd() {
           rt.position.addScaledVector(_dir, step);
         }
       } else if (now >= rt.idleUntil) {
-        pickTarget(rt.position, rt.rng, rt.target);
+        pickTarget(rt.position, rt.rng, rt.target, wanderBound);
         if (rt.target.distanceToSquared(rt.position) > ARRIVE_THRESHOLD * ARRIVE_THRESHOLD) {
           rt.state = 'walking';
           rt.stateChangeTime = now;
@@ -309,7 +317,61 @@ export function BullHerd() {
           rt.idleUntil = now + IDLE_MIN + rt.rng() * (IDLE_MAX - IDLE_MIN);
         }
       }
+    });
 
+    // Separation pass: soft pairwise push-apart so bulls never overlap.
+    // O(n²) is fine at herd scale (~27–50); relaxation spreads the
+    // correction over a few frames so clusters ease apart without jitter.
+    const rts = indexed.map(({ tobu }) => runtimes.current.get(tobu.id));
+    for (let a = 0; a < count; a++) {
+      const ra = rts[a];
+      if (!ra) continue;
+      for (let b = a + 1; b < count; b++) {
+        const rb = rts[b];
+        if (!rb) continue;
+        let dx = rb.position.x - ra.position.x;
+        let dz = rb.position.z - ra.position.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 >= MIN_SEPARATION * MIN_SEPARATION) continue;
+        let dist = Math.sqrt(d2);
+        if (dist < 1e-4) {
+          // Coincident (e.g. same spawn ring slot): split along a
+          // deterministic per-index direction instead of dividing by ~0.
+          const ang = a * 2.399963; // golden angle spreads directions
+          dx = Math.cos(ang);
+          dz = Math.sin(ang);
+          dist = 0;
+        } else {
+          dx /= dist;
+          dz /= dist;
+        }
+        const push = (MIN_SEPARATION - dist) * SEPARATION_RELAX * 0.5;
+        ra.position.x -= dx * push;
+        ra.position.z -= dz * push;
+        rb.position.x += dx * push;
+        rb.position.z += dz * push;
+      }
+    }
+
+    // Containment + compose: keep everyone inside the fence and out of
+    // landmark footprints (also stops walk paths clipping through the barn
+    // or the parked tractor), then write instance matrices.
+    indexed.forEach((_, i) => {
+      const rt = rts[i];
+      if (!rt) return;
+      rt.position.x = Math.min(Math.max(rt.position.x, -wanderBound), wanderBound);
+      rt.position.z = Math.min(Math.max(rt.position.z, -wanderBound), wanderBound);
+      for (const e of LANDMARK_EXCLUSIONS) {
+        const ex = rt.position.x - e.x;
+        const ez = rt.position.z - e.z;
+        const ed2 = ex * ex + ez * ez;
+        if (ed2 < e.r * e.r && ed2 > 1e-6) {
+          const ed = Math.sqrt(ed2);
+          const out = (e.r - ed) * SEPARATION_RELAX;
+          rt.position.x += (ex / ed) * out;
+          rt.position.z += (ez / ed) * out;
+        }
+      }
       _quat.setFromAxisAngle(UP, rt.heading);
       _matrix.compose(rt.position, _quat, _scale);
       mesh.setMatrixAt(i, _matrix);
