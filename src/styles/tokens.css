@@ -50,6 +50,9 @@
   --color-backdrop: rgba(0, 0, 0, 0.4);
   --color-success: #2E7D32; /* 5.1:1 with white text — WCAG AA */
 
+  /* Layout */
+  --topbar-height: 60px; /* fits the 44px icon buttons with breathing room */
+
   /* Motion */
   --transition-fast: 120ms ease;
   --transition-modal: 200ms ease;

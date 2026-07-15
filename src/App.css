@@ -34,7 +34,7 @@ button, input, textarea, select {
   left: 0;
   width: 100%;
   /* Safe-area: clear the notch/Dynamic Island on installed-PWA iPhones. */
-  height: calc(48px + env(safe-area-inset-top, 0px));
+  height: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
   padding: env(safe-area-inset-top, 0px) var(--space-3) 0;
   display: flex;
   align-items: center;
@@ -80,7 +80,7 @@ button, input, textarea, select {
 .canvas-wrap {
   flex: 1;
   position: relative;
-  padding-top: calc(48px + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
   /* Bottom bar removed (prd-topbar-menu-consolidation) — the canvas now
      extends to the bottom edge; only clear the home-indicator inset. */
   padding-bottom: env(safe-area-inset-bottom, 0px);

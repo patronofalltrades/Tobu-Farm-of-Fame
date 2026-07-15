@@ -259,7 +259,7 @@ function App() {
   return (
     <div className="app">
       <div className="topbar">
-        <h1 className="topbar-title">Tobu Farm</h1>
+        <h1 className="topbar-title">Tobu's Farm of Fame</h1>
         <div className="topbar-actions">
           {dataSourceMessage && (
             <span className="topbar-status" role="img" title={dataSourceMessage} aria-label={dataSourceMessage}>
