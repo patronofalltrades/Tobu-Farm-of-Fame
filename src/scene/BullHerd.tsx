@@ -12,9 +12,10 @@ import {
 import type { WebGLProgramParametersWithUniforms } from 'three';
 import { useFarmStore } from '../stores/useFarmStore';
 import {
-  bullCoatFromSeed,
+  bullCoatForWinner,
   hashString,
   mulberry32,
+  useWinnerColors,
 } from '../hooks/useBullColor';
 import { useBullModel } from './models';
 import { mergeGltfMeshes } from './gltfUtils';
@@ -133,6 +134,7 @@ export function BullHerd() {
   const selectTobu = useFarmStore((s) => s.selectTobu);
   const selectedTobuId = useFarmStore((s) => s.selectedTobuId);
   const gltf = useBullModel();
+  const winnerColors = useWinnerColors();
   const meshRef = useRef<InstancedMesh>(null);
   const runtimes = useRef(new Map<string, BullRuntime>());
 
@@ -271,7 +273,9 @@ export function BullHerd() {
     const spotSeed = new Float32Array(count);
     const spotIntensity = new Float32Array(count);
     indexed.forEach(({ tobu, index }, i) => {
-      const coat = bullCoatFromSeed(tobu.bull_pattern_seed, index);
+      // Coat is keyed by winner_name (unique full-spectrum assignment,
+      // US-002); walk phase/rng stay on bull_pattern_seed as before.
+      const coat = bullCoatForWinner(tobu.winner_name, index, winnerColors);
       phase[i] = (hashString(tobu.bull_pattern_seed + index) % 628) / 100;
       spotSeed[i] = coat.spotSeed;
       spotIntensity[i] = coat.spotIntensity;
@@ -283,7 +287,7 @@ export function BullHerd() {
       aSpotSeed: new InstancedBufferAttribute(spotSeed, 1),
       aSpotIntensity: new InstancedBufferAttribute(spotIntensity, 1),
     };
-  }, [indexed, count]);
+  }, [indexed, count, winnerColors]);
 
   useEffect(() => {
     geometry.setAttribute('aPhase', instanceAttrs.aPhase);
@@ -314,14 +318,14 @@ export function BullHerd() {
           rng,
         });
       }
-      _color.setStyle(bullCoatFromSeed(tobu.bull_pattern_seed, index).baseColor);
+      _color.setStyle(bullCoatForWinner(tobu.winner_name, index, winnerColors).baseColor);
       mesh.setColorAt(i, _color);
     });
     for (const id of runtimes.current.keys()) {
       if (!seen.has(id)) runtimes.current.delete(id);
     }
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [indexed, count, spawnById]);
+  }, [indexed, count, spawnById, winnerColors]);
 
   useFrame((state, delta) => {
     const mesh = meshRef.current;

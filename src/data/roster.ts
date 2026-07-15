@@ -58,7 +58,7 @@ export const ROSTER: readonly string[] = [
   'Gustavo Paz Revelo',
   'Tim Pazderka',
   'Hanif Ramadhan',
-  'Thomas Reeves',
+  'Thomas Grainger Reeves',
   'Isabel Rios Forcada',
   'Clara Rocha Carvalhal',
   'Guilherme Rodrigues Pena Calegari',

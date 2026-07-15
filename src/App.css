@@ -39,8 +39,19 @@ button, input, textarea, select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--color-brand-red);
+  /* Chrome polish (US-003): subtle vertical gradient for depth… */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-brand-red) 88%, #fff) 0%,
+    var(--color-brand-red) 55%,
+    color-mix(in srgb, var(--color-brand-red) 86%, #000) 100%
+  );
   color: var(--color-brand-yellow);
+  /* …plus a crisp brand-yellow divider (inset — zero layout shift) and a
+     soft drop shadow separating the bar from the canvas. */
+  box-shadow:
+    inset 0 -3px 0 var(--color-brand-yellow),
+    0 2px 10px rgba(0, 0, 0, 0.22);
   z-index: 100;
 }
 
@@ -70,6 +81,68 @@ button, input, textarea, select {
   flex: 1;
   position: relative;
   padding-top: calc(48px + env(safe-area-inset-top, 0px));
+  /* Clear the fixed bottom action bar so nothing important hides behind it. */
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ---------- Bottom action bar (US-004) ---------- */
+
+.bottombar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc(56px + env(safe-area-inset-bottom, 0px));
+  padding: 0 var(--space-2) env(safe-area-inset-bottom, 0px);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: var(--space-1);
+  /* Mirror of the topbar: same gradient flipped, yellow divider on top. */
+  background: linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--color-brand-red) 86%, #000) 0%,
+    var(--color-brand-red) 45%,
+    color-mix(in srgb, var(--color-brand-red) 88%, #fff) 100%
+  );
+  box-shadow:
+    inset 0 3px 0 var(--color-brand-yellow),
+    0 -2px 10px rgba(0, 0, 0, 0.22);
+  z-index: 100;
+}
+
+.bottombar-button {
+  background: rgba(0, 0, 0, 0.15);
+  border: none;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  font-size: var(--font-size-body);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast);
+}
+
+.bottombar-button:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.bottombar button:focus-visible {
+  outline-color: #fff; /* blue ring is invisible on the red bar */
+}
+
+/* Narrow phones: keep all three labels on one row. */
+@media (max-width: 400px) {
+  .bottombar-button {
+    padding: 0 var(--space-2);
+    font-size: var(--font-size-small);
+    gap: var(--space-1);
+  }
 }
 
 /* ---------- Modal overlays (speech bubble family) ---------- */
@@ -195,6 +268,59 @@ button, input, textarea, select {
 .reaction-picker-anchor {
   position: relative;
   display: inline-block;
+}
+
+/* ---------- Reaction names popover (US-001) ---------- */
+
+.reaction-chip-anchor {
+  position: relative;
+  display: inline-block;
+}
+
+/* Slack-style "who reacted" card, floated above the tapped chip. */
+.reaction-names {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 0;
+  min-width: 150px;
+  max-width: 240px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  z-index: 10;
+  animation: picker-in 160ms ease-out;
+  -webkit-overflow-scrolling: touch;
+}
+
+.reaction-names ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reaction-names li {
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reaction-names li.is-you {
+  font-weight: 800;
+  color: var(--color-brand-blue);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reaction-names {
+    animation: none;
+  }
 }
 
 .speech-content button.reaction-add {
@@ -666,7 +792,8 @@ select:focus-visible {
 .intro-toast {
   position: fixed;
   left: 50%;
-  bottom: var(--space-5);
+  /* Sits above the bottom action bar, not behind it. */
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px) + var(--space-3));
   transform: translateX(-50%);
   max-width: 92%;
   background: rgba(0, 77, 152, 0.94);

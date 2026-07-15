@@ -7,6 +7,9 @@
 // The seed also picks the spawn point so the farm looks stable across
 // reloads before the bulls start wandering.
 
+import { useMemo } from 'react';
+import { useFarmStore } from '../stores/useFarmStore';
+
 export function hashString(input: string): number {
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
@@ -43,12 +46,17 @@ const COAT_HUES: Array<[number, number, number]> = [
   [0, 0, 62],    // silver
 ];
 
-export function bullCoatFromSeed(seed: string, variantIndex = 0): BullCoat {
-  const h = hashString(seed);
-  const [hue, sat, baseLight] = COAT_HUES[h % COAT_HUES.length];
-  // Repeat wins keep the hue (family identity) but step lightness/saturation
-  // and re-roll the spot layout, so no two of a winner's bulls look identical.
-  // First wins (variantIndex 0) reproduce the pre-variant coat exactly.
+/** Shared variant stepping: repeat wins keep the hue (family identity) but
+ *  step lightness/saturation and re-roll the spot layout, so no two of a
+ *  winner's bulls look identical. First wins (variantIndex 0) reproduce the
+ *  base coat exactly. */
+function buildCoat(
+  hue: number,
+  sat: number,
+  baseLight: number,
+  h: number,
+  variantIndex: number,
+): BullCoat {
   const light = variantIndex === 0
     ? baseLight
     : Math.min(85, Math.max(18, baseLight + (variantIndex % 2 === 1 ? 16 : -14) * Math.ceil(variantIndex / 2)));
@@ -62,13 +70,78 @@ export function bullCoatFromSeed(seed: string, variantIndex = 0): BullCoat {
   };
 }
 
-/** @deprecated kept for leaderboard swatches; delegates to bullCoatFromSeed. */
-export function bullColorFromSeed(seed: string): string {
-  return bullCoatFromSeed(seed).baseColor;
+export function bullCoatFromSeed(seed: string, variantIndex = 0): BullCoat {
+  const h = hashString(seed);
+  const [hue, sat, baseLight] = COAT_HUES[h % COAT_HUES.length];
+  return buildCoat(hue, sat, baseLight, h, variantIndex);
 }
 
-export function useBullColor(seed: string): string {
-  return bullCoatFromSeed(seed).baseColor;
+// ---------------------------------------------------------------------------
+// Guaranteed-unique winner colors (prd-reactions-colors-chrome-audio US-002).
+// The 12-hue curated palette collides once the section has >12 distinct
+// winners (pigeonhole), so live winner sets get a full-spectrum assignment:
+// evenly spaced hue slots over the whole wheel, visited in a coprime-stride
+// order so alphabetical neighbors land on far-apart hues, with sat/light
+// bands cycling by slot so even hue-adjacent slots differ in tone. The
+// assignment is a pure function of the sorted distinct-name list —
+// deterministic across reloads, no randomness.
+
+export type WinnerHueMap = Map<string, readonly [number, number, number]>;
+
+/** Sat/light bands cycle by hue slot: slots 18° apart also differ in tone,
+ *  so "adjacent" colors never read as the same coat. Mid bands keep the
+ *  spectrum toy-farm, not neon. */
+const SAT_BAND = [52, 40, 62] as const;
+const LIGHT_BAND = [46, 58, 38] as const;
+const HUE_OFFSET = 15; // start the wheel on a warm chestnut-ish tone
+
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+export function assignWinnerColors(distinctSortedNames: string[]): WinnerHueMap {
+  const n = distinctSortedNames.length;
+  const map: WinnerHueMap = new Map();
+  if (n === 0) return map;
+  // Golden-ratio stride, nudged to be coprime with n so every slot is hit
+  // exactly once and alphabetical neighbors scatter across the wheel.
+  let stride = Math.max(1, Math.round(n * 0.618));
+  while (n > 1 && gcd(stride, n) !== 1) stride++;
+  distinctSortedNames.forEach((name, i) => {
+    const slot = (i * stride) % n;
+    const hue = Math.round((HUE_OFFSET + (slot * 360) / n) % 360);
+    map.set(name, [hue, SAT_BAND[slot % 3], LIGHT_BAND[slot % 3]]);
+  });
+  return map;
+}
+
+/** Coat for a winner under the unique assignment; falls back to the legacy
+ *  curated palette for names outside the map (e.g. a pending submission
+ *  previewed before it lands in the approved set). */
+export function bullCoatForWinner(
+  name: string,
+  variantIndex: number,
+  colors: WinnerHueMap,
+): BullCoat {
+  const base = colors.get(name);
+  if (!base) return bullCoatFromSeed(name, variantIndex);
+  return buildCoat(base[0], base[1], base[2], hashString(name), variantIndex);
+}
+
+/** The one live winner→color assignment, derived from the approved Tobu set.
+ *  BullHerd, Leaderboard, and the bubble sender tint all consume this hook so
+ *  a winner's swatch, bull, and name tint can never disagree. */
+export function useWinnerColors(): WinnerHueMap {
+  const tobus = useFarmStore((s) => s.tobus);
+  return useMemo(
+    () =>
+      assignWinnerColors(
+        Array.from(
+          new Set(tobus.filter((t) => t.status === 'approved').map((t) => t.winner_name)),
+        ).sort((a, b) => a.localeCompare(b)),
+      ),
+    [tobus],
+  );
 }
 
 // Spawn placement moved to farmLayout.computeSpawnPositions — the herd is now

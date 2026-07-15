@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import { useFarmStore } from '../stores/useFarmStore';
-import { bullColorFromSeed } from '../hooks/useBullColor';
+import { bullCoatForWinner, useWinnerColors } from '../hooks/useBullColor';
 
 interface LeaderboardProps {
   onClose: () => void;
@@ -14,6 +14,8 @@ interface Row {
 
 export function Leaderboard({ onClose }: LeaderboardProps) {
   const tobus = useFarmStore((s) => s.tobus);
+  // Same live assignment the herd uses — swatch always matches the bull (US-002).
+  const winnerColors = useWinnerColors();
 
   const rows = useMemo<Row[]>(() => {
     const counts = new Map<string, number>();
@@ -44,7 +46,7 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
               <span className="leaderboard-rank">#{i + 1}</span>
               <span
                 className="leaderboard-swatch"
-                style={{ background: bullColorFromSeed(row.name) }}
+                style={{ background: bullCoatForWinner(row.name, 0, winnerColors).baseColor }}
                 aria-hidden
               />
               <span className="leaderboard-name" title={row.name}>{row.name}</span>

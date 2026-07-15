@@ -101,7 +101,7 @@ compiled below but not yet seeded.
 
 ### 21. 20 Mar 2026 — Lasse Daene
 **Why:** Awarded on the spot for "mouth to mouth communication."
-**Commentary:** *Said something about "mouth to mouth communication" that nobody, including him, can reconstruct anymore. Won purely on collective confusion.*
+**Commentary:** *Meant word of mouth, said "mouth to mouth communication" — which is the one that involves a sloppy kiss, not a marketing channel. The section rewarded the accidental romance.*
 
 ### 22. 25 Mar 2026 — Hanif Ramadhan
 **Why:** Poll winner (39 votes) — Spring Break special: won for his study guides, made Tobu's parent through the exam break.
@@ -119,13 +119,13 @@ compiled below but not yet seeded.
 **Why:** Poll winner (25 votes) — told Alex Serrano directly, "I think Alex S is wrong…"
 **Commentary:** *Told Alex Serrano to his face he was wrong, banked 25 votes of backup, then reportedly folded and agreed with him later that day. Strong opinions, short shelf life.*
 
-### 25. 8 May 2026 — Thomas Reeves
+### 25. 8 May 2026 — Thomas Grainger Reeves
 **Why:** Poll winner (19 votes) — "Unsophisticated…simple….people."
 **Commentary:** *Called someone else unsophisticated and simple, in a room full of people paying six figures to argue about spreadsheets. The irony detector in that room was clearly broken.*
 
-### 26. 15 May 2026 — Thomas Reeves *(2nd win)*
+### 26. 15 May 2026 — Thomas Grainger Reeves *(2nd win)*
 **Why:** Poll winner (20 votes) — "I was on a shitty team."
-**Commentary:** *Blamed the team instead of himself, again. Bad Thomas isn't an accident anymore, it's a brand.*
+**Commentary:** *Blamed the team instead of himself, again. This is the start of the Bad Thomas era.*
 
 ### — 22 May 2026 — Steph Charouk *(year-end honor)*
 **Why:** Not a weekly win — voted by the whole section as Tobu's favorite parent of the year, earning the right to bring him home for the summer.
@@ -135,6 +135,6 @@ compiled below but not yet seeded.
 
 ## Notes
 
-- **Repeat winners across the year:** Guglielmo Campanella (2×), Kunal Doshi (2×), Akshat Bhatnagar (2×), Lewis Hall (2×), Stephanie Felix Amaral (2×), Keita Suzuki (2×), Thomas Reeves (2×).
+- **Repeat winners across the year:** Guglielmo Campanella (2×), Kunal Doshi (2×), Akshat Bhatnagar (2×), Lewis Hall (2×), Stephanie Felix Amaral (2×), Keita Suzuki (2×), Thomas Grainger Reeves (2×).
 - **Term boundaries** are approximate, aligned to the visible rhythm of the section's schedule (Sep–Dec / Jan–Mar / Apr–May) rather than an official academic calendar cutoff.
 - **Open items:** the disputed 4 Mar week (Term 2) and possible skipped weeks around midterms (3 & 7 Nov 2025, 13 & 20 Feb 2026) per the original verification sheet — none of these had confirmable winners in the chat export.
