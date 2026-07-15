@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SmilePlus, TriangleAlert, Wrench } from 'lucide-react';
+import { SmilePlus, TriangleAlert } from 'lucide-react';
 import { Farm } from './scene/Farm';
 import { bullCoatForWinner, useWinnerColors } from './hooks/useBullColor';
 import type { WinnerHueMap } from './hooks/useBullColor';
 import { RosterPicker } from './components/RosterPicker';
-import { BottomBar } from './components/BottomBar';
+import { TopMenu } from './components/TopMenu';
 import { LoadScreen } from './components/LoadScreen';
 import { unlockAudio, syncAmbientPlayback } from './audio/useFarmAudio';
 import { Leaderboard } from './components/Leaderboard';
@@ -105,6 +105,7 @@ function App() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isAdminPinOpen, setIsAdminPinOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isAdmin = useFarmStore((s) => s.isAdmin);
   const setAdmin = useFarmStore((s) => s.setAdmin);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -188,7 +189,8 @@ function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || isBarnOpen) return;
-      if (isAdminPanelOpen) setIsAdminPanelOpen(false);
+      if (isMenuOpen) setIsMenuOpen(false);
+      else if (isAdminPanelOpen) setIsAdminPanelOpen(false);
       else if (isAdminPinOpen) setIsAdminPinOpen(false);
       else if (isLeaderboardOpen) setIsLeaderboardOpen(false);
       else if (isMascotOpen) setIsMascotOpen(false);
@@ -198,7 +200,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isBarnOpen, isAdminPanelOpen, isAdminPinOpen, isLeaderboardOpen, isMascotOpen, namesFor, isPickerOpen, selectedTobuId, selectTobu]);
+  }, [isBarnOpen, isMenuOpen, isAdminPanelOpen, isAdminPinOpen, isLeaderboardOpen, isMascotOpen, namesFor, isPickerOpen, selectedTobuId, selectTobu]);
 
   const selected = tobus.find((t) => t.id === selectedTobuId);
   const selectedReaction = useMemo(() => {
@@ -265,19 +267,20 @@ function App() {
             </span>
           )}
           <MuteButton />
-          <button
-            type="button"
-            className={`admin-trigger${isAdmin ? ' is-admin' : ''}`}
-            title={isAdmin ? 'Open pending Tobu queue (right-click to log out of admin)' : 'Admin PIN'}
-            aria-label="Admin"
-            onClick={() => {
+          <TopMenu
+            isOpen={isMenuOpen}
+            onToggle={() => setIsMenuOpen((open) => !open)}
+            onClose={() => setIsMenuOpen(false)}
+            onSubmit={() => setIsBarnOpen(true)}
+            onLeaderboard={() => setIsLeaderboardOpen(true)}
+            onInfo={() => setIsMascotOpen(true)}
+            onAdmin={() => {
               if (isAdmin) setIsAdminPanelOpen(true);
               else setIsAdminPinOpen(true);
             }}
-            onContextMenu={(e) => { e.preventDefault(); if (isAdmin) setAdmin(false); }}
-          >
-            <Wrench size={18} aria-hidden />
-          </button>
+            isAdmin={isAdmin}
+            onAdminLogout={() => setAdmin(false)}
+          />
         </div>
       </div>
 
@@ -289,13 +292,6 @@ function App() {
           onFirstFrame={() => setSceneReady(true)}
         />
       </div>
-
-      {/* Discoverability aid (US-004): same handlers as the 3D landmarks. */}
-      <BottomBar
-        onSubmit={() => setIsBarnOpen(true)}
-        onLeaderboard={() => setIsLeaderboardOpen(true)}
-        onInfo={() => setIsMascotOpen(true)}
-      />
 
       {!userName && !isGuest && <RosterPicker />}
 
