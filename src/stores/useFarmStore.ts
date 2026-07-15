@@ -13,6 +13,7 @@ interface FarmState {
   selectTobu: (id: string | null) => void;
   setAdmin: (isAdmin: boolean) => void;
   toggleMute: () => void;
+  setMuted: (muted: boolean) => void;
   setUserName: (name: string) => void;
   setGuest: () => void;
   markIntroSeen: () => void;
@@ -62,6 +63,8 @@ export const useFarmStore = create<FarmState>((set) => ({
   selectTobu: (id) => set({ selectedTobuId: id }),
   setAdmin: (isAdmin) => set({ isAdmin }),
   toggleMute: () => set((s) => ({ isMuted: !s.isMuted })),
+  // Entry flow sets sound on explicitly (prd-tobu-load-screen US-003).
+  setMuted: (muted) => set({ isMuted: muted }),
   setUserName: (name) => {
     safeSetItem('tobu_user_name', name);
     safeRemoveItem('tobu_guest');

@@ -5,6 +5,8 @@ import { bullCoatForWinner, useWinnerColors } from './hooks/useBullColor';
 import type { WinnerHueMap } from './hooks/useBullColor';
 import { RosterPicker } from './components/RosterPicker';
 import { BottomBar } from './components/BottomBar';
+import { LoadScreen } from './components/LoadScreen';
+import { unlockAudio, syncAmbientPlayback } from './audio/useFarmAudio';
 import { Leaderboard } from './components/Leaderboard';
 import { BarnSubmit } from './components/BarnSubmit';
 import { AdminPinGate } from './components/AdminPinGate';
@@ -106,6 +108,12 @@ function App() {
   const isAdmin = useFarmStore((s) => s.isAdmin);
   const setAdmin = useFarmStore((s) => s.setAdmin);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  // Load-screen gating (prd-tobu-load-screen): the farm mounts and loads
+  // beneath the splash; entry needs data + a rendered first frame.
+  const [hasEntered, setHasEntered] = useState(false);
+  const [sceneReady, setSceneReady] = useState(false);
+  const [dataReady, setDataReady] = useState(false);
+  const setMuted = useFarmStore((s) => s.setMuted);
   // Which reaction chip's names popover is open (US-001) — single slot, so
   // only one popover can ever be open at a time.
   const [namesFor, setNamesFor] = useState<ReactionEmoji | null>(null);
@@ -145,6 +153,7 @@ function App() {
   useEffect(() => {
     if (!isFirebaseConfigured) {
       setTobus(MOCK_TOBUS);
+      setDataReady(true);
       return;
     }
 
@@ -152,10 +161,12 @@ function App() {
       (liveTobus) => {
         setTobus(liveTobus);
         setHasFirebaseError(false);
+        setDataReady(true);
       },
       () => {
         setTobus(MOCK_TOBUS);
         setHasFirebaseError(true);
+        setDataReady(true); // demo fallback applied — don't block entry
       },
     );
 
@@ -275,6 +286,7 @@ function App() {
           onBarnClick={() => setIsBarnOpen(true)}
           onMascotClick={() => setIsMascotOpen(true)}
           onSignpostClick={() => setIsLeaderboardOpen(true)}
+          onFirstFrame={() => setSceneReady(true)}
         />
       </div>
 
@@ -414,6 +426,19 @@ function App() {
         <AdminPanel
           onClose={() => setIsAdminPanelOpen(false)}
           isFirebaseLive={isFirebaseConfigured && !hasFirebaseError}
+        />
+      )}
+
+      {!hasEntered && (
+        <LoadScreen
+          ready={sceneReady && dataReady}
+          onEnter={() => {
+            // Inside the trusted tap: arrive with sound on (US-003).
+            setMuted(false);
+            unlockAudio();
+            syncAmbientPlayback();
+          }}
+          onDone={() => setHasEntered(true)}
         />
       )}
 

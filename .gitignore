@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .vercel
 .env*
+
+# Personal screenshots stay untracked
+Screenshot*.png

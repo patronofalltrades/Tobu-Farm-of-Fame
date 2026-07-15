@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'models/*.glb', 'audio/*.wav'],
+      includeAssets: ['favicon.svg', 'models/*.glb', 'audio/*.mp3', 'splash-logo.jpg'],
       manifest: {
         name: 'Tobu Wall of Fame',
         short_name: 'Tobu Farm',
@@ -31,7 +31,11 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,glb,wav,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,glb,mp3,jpg,woff2}'],
+        // Real ambient (472KB) + moos push a few assets past workbox's 2MB
+        // default is fine; keep the cap explicit so a future oversized asset
+        // fails loudly in review rather than silently dropping from precache.
+        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
       },
     }),
   ],

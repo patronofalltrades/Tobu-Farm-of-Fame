@@ -40,6 +40,20 @@ interface FarmProps {
   onBarnClick?: () => void;
   onMascotClick?: () => void;
   onSignpostClick?: () => void;
+  /** Fires once, on the first rendered frame — the load screen's
+   *  "scene is actually visible" signal (prd-tobu-load-screen US-002). */
+  onFirstFrame?: () => void;
+}
+
+function FirstFrameProbe({ onFirstFrame }: { onFirstFrame?: () => void }) {
+  const fired = useRef(false);
+  useFrame(() => {
+    if (!fired.current) {
+      fired.current = true;
+      onFirstFrame?.();
+    }
+  });
+  return null;
 }
 
 /** Fence ring from repeated 7-unit GLB segments around the computed pasture. */
@@ -252,11 +266,12 @@ function FarmControls({ bound }: { bound: number }) {
   );
 }
 
-export function Farm({ onBarnClick, onMascotClick, onSignpostClick }: FarmProps) {
+export function Farm({ onBarnClick, onMascotClick, onSignpostClick, onFirstFrame }: FarmProps) {
   const tobus = useFarmStore((s) => s.tobus);
   const bound = computePastureBound(approvedCount(tobus));
   return (
     <Canvas shadows={false} camera={{ position: [0, 8, 14], fov: 50 }}>
+      <FirstFrameProbe onFirstFrame={onFirstFrame} />
       <fog attach="fog" args={[SKY_COLOR, 32, 90]} />
       <Sky sunPosition={[100, 20, 100]} />
       <Environment preset="park" />
