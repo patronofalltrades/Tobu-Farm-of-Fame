@@ -6,7 +6,11 @@ interface LandmarkModelProps {
   position: [number, number, number];
   scale?: number;
   onClick?: () => void;
-  hitboxSize?: [number, number, number];
+  /** Invisible tap-fattening box (local units, scaled with the group).
+   *  Pass `null` to rely on the model's real meshes only — an oversized box
+   *  eclipses raycasts to objects behind the landmark (the "Tobus are not
+   *  clickable" bug: Mama Tobu's box swallowed taps meant for bulls). */
+  hitboxSize?: [number, number, number] | null;
 }
 
 export function LandmarkModel({
@@ -28,10 +32,12 @@ export function LandmarkModel({
   return (
     <group position={position} scale={scale}>
       <Clone object={scene} onClick={handleClick} {...pointer} />
-      <mesh position={[0, hitboxSize[1] / 2, 0]} onClick={handleClick} {...pointer}>
-        <boxGeometry args={hitboxSize} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
+      {hitboxSize && (
+        <mesh position={[0, hitboxSize[1] / 2, 0]} onClick={handleClick} {...pointer}>
+          <boxGeometry args={hitboxSize} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      )}
     </group>
   );
 }
