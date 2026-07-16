@@ -43,6 +43,12 @@ const PALETTE = {
   bushDark: 0x477c31,
   rockGray: 0x9198a0,
   rockDark: 0x6f767e,
+  // Farmstead tones (prd-proper-farm): straw for hay, stone/metal silo,
+  // stylized flat water for the trough (and the pond decal reuses the hex).
+  straw: 0xd9a94f,
+  strawDark: 0xb9873a,
+  siloCream: 0xe8e0cf,
+  water: 0x4fa3d1,
 };
 
 /**
@@ -119,6 +125,38 @@ class MeshBuilder {
       g.indices.push(l0, l1, r0, l1, r1, r0); // side wall
       g.indices.push(cL, l1, l0);             // left cap
       g.indices.push(cR, r0, r1);             // right cap
+    }
+  }
+
+  /**
+   * Vertical low-poly cylinder (silo, well ring) — two rings in the XZ
+   * plane + top/bottom cap fans. Same double-sided, flat-shaded treatment
+   * as the X-axis wheel cylinder above.
+   */
+  cylinderY(mat, radius, height, segments, tx, ty, tz, { color = [0, 0, 0] } = {}) {
+    const g = this.group(mat);
+    const base = g.positions.length / 3;
+    const hh = height / 2;
+    for (const y of [-hh, hh]) {
+      for (let i = 0; i < segments; i++) {
+        const a = (i / segments) * Math.PI * 2;
+        g.positions.push(Math.cos(a) * radius + tx, y + ty, Math.sin(a) * radius + tz);
+        g.colors.push(...color);
+      }
+    }
+    const cB = base + segments * 2;
+    g.positions.push(tx, -hh + ty, tz);
+    g.colors.push(...color);
+    const cT = cB + 1;
+    g.positions.push(tx, hh + ty, tz);
+    g.colors.push(...color);
+    for (let i = 0; i < segments; i++) {
+      const j = (i + 1) % segments;
+      const b0 = base + i, b1 = base + j;
+      const t0 = base + segments + i, t1 = base + segments + j;
+      g.indices.push(b0, b1, t0, b1, t1, t0); // side wall
+      g.indices.push(cB, b1, b0);             // bottom cap
+      g.indices.push(cT, t0, t1);             // top cap
     }
   }
 
@@ -339,6 +377,49 @@ function fence() {
   return b;
 }
 
+// --- Farmstead props (prd-proper-farm US-001) ---
+
+/** Grain silo: tall body, rim band, shallow cream dome cap. */
+function silo() {
+  const b = new MeshBuilder();
+  b.cylinderY('rockGray', 1.05, 3.2, 12, 0, 1.6, 0);      // body
+  b.cylinderY('rockDark', 1.12, 0.22, 12, 0, 3.05, 0);    // rim band
+  b.cylinderY('siloCream', 0.82, 0.5, 12, 0, 3.45, 0);    // dome step
+  b.cylinderY('siloCream', 0.4, 0.35, 10, 0, 3.8, 0);     // cap knob
+  b.box('darkWood', 0.5, 0.9, 0.12, 0, 0.45, 1.05);       // little hatch
+  return b;
+}
+
+/** Round hay bale lying on its side (axle already along X). */
+function hay() {
+  const b = new MeshBuilder();
+  b.cylinder('straw', 0.55, 0.95, 12, 0, 0.55, 0);        // bale
+  b.cylinder('strawDark', 0.56, 0.18, 12, 0, 0.55, 0);    // binding band
+  return b;
+}
+
+/** Water trough: wood shell, water surface just below the rim. */
+function trough() {
+  const b = new MeshBuilder();
+  b.box('darkWood', 2.0, 0.55, 1.0, 0, 0.275, 0);         // outer shell
+  b.box('water', 1.76, 0.1, 0.76, 0, 0.52, 0);            // water face
+  b.box('wood', 0.16, 0.62, 1.0, -0.94, 0.31, 0);         // end caps proud
+  b.box('wood', 0.16, 0.62, 1.0, 0.94, 0.31, 0);
+  return b;
+}
+
+/** Stone well: ring, two posts, gable roof, crossbar. */
+function well() {
+  const b = new MeshBuilder();
+  b.cylinderY('rockGray', 0.72, 0.85, 10, 0, 0.425, 0);   // stone ring
+  b.cylinderY('dark', 0.55, 0.06, 10, 0, 0.88, 0);        // dark mouth
+  b.box('wood', 0.14, 1.1, 0.14, -0.6, 1.1, 0);           // posts
+  b.box('wood', 0.14, 1.1, 0.14, 0.6, 1.1, 0);
+  b.box('darkWood', 1.3, 0.09, 0.09, 0, 1.35, 0);         // crossbar
+  b.prism('red', 1.8, 0.55, 1.5, 0, 1.85, 0);             // little senyera roof
+  return b;
+}
+
 console.log('Generating models…');
 await write('bull', bull());
 await write('barn', barn());
@@ -350,4 +431,8 @@ await write('bush', bush());
 await write('rock', rock());
 await write('tractor', tractor());
 await write('wheel', wheel());
+await write('silo', silo());
+await write('hay', hay());
+await write('trough', trough());
+await write('well', well());
 console.log('Done.');

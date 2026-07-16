@@ -16,6 +16,10 @@ import {
   useRockModel,
   useTractorModel,
   useWheelModel,
+  useSiloModel,
+  useHayModel,
+  useTroughModel,
+  useWellModel,
 } from './models';
 import {
   approvedCount,
@@ -142,6 +146,91 @@ function Tractor({ bound }: { bound: number }) {
       <Clone object={scene} />
       {WHEEL_SLOTS.map((w, i) => (
         <Clone key={i} object={wheel.scene} position={w.position} scale={w.scale} />
+      ))}
+    </group>
+  );
+}
+
+/**
+ * Farmstead cluster around the barn (prd-proper-farm US-002). Pure scenery:
+ * no tap handlers, no invisible hitboxes (the mascot-eclipse lesson) — the
+ * matching LANDMARK_EXCLUSIONS entries in BullHerd keep bulls clear. Every
+ * position stays inside the tractor's MINIMUM patrol loop (±11.5 at the
+ * smallest pasture) so the patrol never drives through a prop at any size.
+ */
+function Farmstead() {
+  const silo = useSiloModel();
+  const hay = useHayModel();
+  const trough = useTroughModel();
+  const well = useWellModel();
+  return (
+    <group>
+      <Clone object={silo.scene} position={[-9.6, 0, -9.4]} />
+      <Clone object={hay.scene} position={[-5.7, 0, -4.1]} rotation={[0, 0.5, 0]} />
+      <Clone object={hay.scene} position={[-6.6, 0, -3.5]} rotation={[0, -0.8, 0]} scale={0.85} />
+      <Clone object={trough.scene} position={[-5.2, 0, -7.6]} rotation={[0, 0.15, 0]} />
+      <Clone object={well.scene} position={[-10.5, 0, -1.5]} rotation={[0, 0.6, 0]} />
+    </group>
+  );
+}
+
+// Ground features (prd-proper-farm US-003): flat decals, tracking-ring
+// technique (tiny y-offset, no depth write, raycast-transparent) so they
+// never z-fight or steal taps. Hand-placed constants = fully deterministic;
+// everything sits inside the minimum ±14 pasture so no herd size strands a
+// feature outside the fence.
+const POND = { x: 7, z: 6.5, r: 2.2 };
+const PATH_SEGMENTS: Array<{ x: number; z: number; w: number; l: number; rot: number }> = [
+  { x: -8.2, z: 11.5, w: 1.8, l: 5.5, rot: 0.08 },
+  { x: -8.6, z: 6.8, w: 1.8, l: 5.0, rot: -0.14 },
+  { x: -8.2, z: 2.4, w: 1.8, l: 4.6, rot: 0.1 },
+  { x: -8.0, z: -1.6, w: 1.8, l: 4.4, rot: -0.06 },
+];
+const PATCHES: Array<{ x: number; z: number; r: number; color: string; opacity: number }> = [
+  { x: 5, z: -8, r: 1.3, color: '#8a6b45', opacity: 0.5 },   // mud
+  { x: -2.5, z: 9.5, r: 1.1, color: '#c9d16a', opacity: 0.45 }, // dry grass / flowers
+  { x: 11, z: 1.5, r: 1.5, color: '#7d9c4a', opacity: 0.5 },  // darker green
+  { x: -12, z: 6, r: 1.0, color: '#8a6b45', opacity: 0.4 },   // mud
+  { x: 1.5, z: -11, r: 1.2, color: '#c9d16a', opacity: 0.4 },
+];
+
+function GroundFeatures() {
+  return (
+    <group>
+      {/* Dirt path: fence side → barn door, slightly bent segments. */}
+      {PATH_SEGMENTS.map((s, i) => (
+        <mesh
+          key={i}
+          position={[s.x, 0.02, s.z]}
+          rotation={[-Math.PI / 2, 0, s.rot]}
+          raycast={() => null}
+          renderOrder={1}
+        >
+          <planeGeometry args={[s.w, s.l]} />
+          <meshBasicMaterial color="#9b7043" transparent opacity={0.85} depthWrite={false} />
+        </mesh>
+      ))}
+      {/* Pond: darker rim under a water disc. */}
+      <mesh position={[POND.x, 0.02, POND.z]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null} renderOrder={1}>
+        <circleGeometry args={[POND.r + 0.35, 28]} />
+        <meshBasicMaterial color="#3d7a9e" depthWrite={false} />
+      </mesh>
+      <mesh position={[POND.x, 0.03, POND.z]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null} renderOrder={2}>
+        <circleGeometry args={[POND.r, 28]} />
+        <meshBasicMaterial color="#4fa3d1" depthWrite={false} />
+      </mesh>
+      {/* Mud / flower patches: low-contrast seasoning, not features. */}
+      {PATCHES.map((p, i) => (
+        <mesh
+          key={i}
+          position={[p.x, 0.015, p.z]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          raycast={() => null}
+          renderOrder={1}
+        >
+          <circleGeometry args={[p.r, 20]} />
+          <meshBasicMaterial color={p.color} transparent opacity={p.opacity} depthWrite={false} />
+        </mesh>
       ))}
     </group>
   );
@@ -400,6 +489,8 @@ export function Farm({
 
       <Fences bound={bound} />
       <Scenery bound={bound} />
+      <Farmstead />
+      <GroundFeatures />
       <Mascot onClick={onMascotClick} />
       <Barn onClick={onBarnClick} />
       <Tractor bound={bound} />

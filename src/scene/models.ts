@@ -10,6 +10,10 @@ const BUSH_URL = '/models/bush.glb';
 const ROCK_URL = '/models/rock.glb';
 const TRACTOR_URL = '/models/tractor.glb';
 const WHEEL_URL = '/models/wheel.glb';
+const SILO_URL = '/models/silo.glb';
+const HAY_URL = '/models/hay.glb';
+const TROUGH_URL = '/models/trough.glb';
+const WELL_URL = '/models/well.glb';
 
 useGLTF.preload(BULL_URL);
 useGLTF.preload(BARN_URL);
@@ -21,6 +25,10 @@ useGLTF.preload(BUSH_URL);
 useGLTF.preload(ROCK_URL);
 useGLTF.preload(TRACTOR_URL);
 useGLTF.preload(WHEEL_URL);
+useGLTF.preload(SILO_URL);
+useGLTF.preload(HAY_URL);
+useGLTF.preload(TROUGH_URL);
+useGLTF.preload(WELL_URL);
 
 export const MODEL_URLS = {
   bull: BULL_URL,
@@ -33,6 +41,10 @@ export const MODEL_URLS = {
   rock: ROCK_URL,
   tractor: TRACTOR_URL,
   wheel: WHEEL_URL,
+  silo: SILO_URL,
+  hay: HAY_URL,
+  trough: TROUGH_URL,
+  well: WELL_URL,
 } as const;
 
 export function useBullModel() {
@@ -73,4 +85,20 @@ export function useTractorModel() {
 
 export function useWheelModel() {
   return useGLTF(WHEEL_URL);
+}
+
+export function useSiloModel() {
+  return useGLTF(SILO_URL);
+}
+
+export function useHayModel() {
+  return useGLTF(HAY_URL);
+}
+
+export function useTroughModel() {
+  return useGLTF(TROUGH_URL);
+}
+
+export function useWellModel() {
+  return useGLTF(WELL_URL);
 }
