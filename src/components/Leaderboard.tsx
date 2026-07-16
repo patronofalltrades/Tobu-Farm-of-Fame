@@ -5,6 +5,8 @@ import { bullCoatForWinner, useWinnerColors } from '../hooks/useBullColor';
 
 interface LeaderboardProps {
   onClose: () => void;
+  /** Tapping a row jumps to that winner's story bubble (US-004). */
+  onSelectWinner: (name: string) => void;
 }
 
 interface Row {
@@ -12,7 +14,7 @@ interface Row {
   wins: number;
 }
 
-export function Leaderboard({ onClose }: LeaderboardProps) {
+export function Leaderboard({ onClose, onSelectWinner }: LeaderboardProps) {
   const tobus = useFarmStore((s) => s.tobus);
   // Same live assignment the herd uses — swatch always matches the bull (US-002).
   const winnerColors = useWinnerColors();
@@ -42,23 +44,27 @@ export function Leaderboard({ onClose }: LeaderboardProps) {
 
         <ol className="leaderboard-list">
           {rows.map((row, i) => (
-            <li key={row.name} className="leaderboard-row">
-              <span className="leaderboard-rank">#{i + 1}</span>
-              <span
-                className="leaderboard-swatch"
-                style={{ background: bullCoatForWinner(row.name, 0, winnerColors).baseColor }}
-                aria-hidden
-              />
-              <span className="leaderboard-name" title={row.name}>{row.name}</span>
-              <span className="leaderboard-wins">
-                {row.wins}
-                <span className="visually-hidden"> {row.wins === 1 ? 'win' : 'wins'}</span>
-              </span>
+            <li key={row.name}>
+              <button
+                type="button"
+                className="leaderboard-row"
+                onClick={() => onSelectWinner(row.name)}
+              >
+                <span className="leaderboard-rank">#{i + 1}</span>
+                <span
+                  className="leaderboard-swatch"
+                  style={{ background: bullCoatForWinner(row.name, 0, winnerColors).baseColor }}
+                  aria-hidden
+                />
+                <span className="leaderboard-name" title={row.name}>{row.name}</span>
+                <span className="leaderboard-wins">
+                  {row.wins}
+                  <span className="visually-hidden"> {row.wins === 1 ? 'win' : 'wins'}</span>
+                </span>
+              </button>
             </li>
           ))}
         </ol>
-
-        <button onClick={onClose}>Close</button>
       </div>
     </div>
   );

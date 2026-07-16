@@ -5,6 +5,20 @@ const MIN_DISPLAY_MS = 1000; // logo always registers, even on cached loads
 const MAX_WAIT_MS = 10000;   // never hang forever on a stalled asset
 const LEAVE_MS = 400;        // matches the CSS fade duration
 
+// Subtitle tracks real asset-load progress in three tonal stages (US-005) —
+// the copy and the bar are both functions of the same `progress` number, so
+// they can never disagree on which third the load is in.
+const LOAD_STAGES = [
+  { max: 33, text: 'Rounding up the herd…' },
+  { max: 66, text: 'Brushing their coats…' },
+  { max: 100, text: 'Setting up the pasture…' },
+] as const;
+
+function loadingSubtitle(progress: number): string {
+  const stage = LOAD_STAGES.find((s) => progress <= s.max);
+  return (stage ?? LOAD_STAGES[LOAD_STAGES.length - 1]).text;
+}
+
 interface LoadScreenProps {
   /** App-level readiness: Tobu data arrived + first frame rendered. */
   ready: boolean;
@@ -70,7 +84,7 @@ export function LoadScreen({ ready, onEnter, onDone }: LoadScreenProps) {
           <div className="load-bar" aria-hidden>
             <div className="load-bar-fill" style={{ width: `${shownProgress}%` }} />
           </div>
-          <span>Rounding up the herd…</span>
+          <span>{loadingSubtitle(progress)}</span>
         </div>
       )}
     </div>

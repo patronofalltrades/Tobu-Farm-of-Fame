@@ -35,7 +35,13 @@ button, input, textarea, select {
   width: 100%;
   /* Safe-area: clear the notch/Dynamic Island on installed-PWA iPhones. */
   height: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
-  padding: env(safe-area-inset-top, 0px) var(--space-3) 0;
+  /* Edge gutter (US-006): the old flat 12px horizontal padding pinned the
+     44px buttons against the bar's edge and ignored landscape notches —
+     fixed gutter + safe-area inset on each side. */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: calc(var(--space-5) + env(safe-area-inset-right, 0px));
+  padding-bottom: 0;
+  padding-left: calc(var(--space-5) + env(safe-area-inset-left, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -322,6 +328,48 @@ button, input, textarea, select {
   font-size: var(--font-size-small);
   display: block;
   margin-bottom: var(--space-4);
+}
+
+/* ---------- Winner pager (prd-winner-navigation-and-polish US-003) ---------- */
+
+.tobu-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.speech-content button.tobu-pager-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  color: var(--color-brand-blue);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.speech-content button.tobu-pager-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.speech-content button.tobu-pager-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tobu-pager-count {
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  min-width: 40px;
+  text-align: center;
 }
 
 /* Curated witty one-liner under the story — deliberately quieter than the
@@ -761,17 +809,33 @@ select:focus-visible {
   -webkit-overflow-scrolling: touch;
 }
 
-.leaderboard-row {
+/* Rows are real buttons now (US-004) — the specificity must beat the generic
+   .speech-content button (red pill) styling, hence the compound selector. */
+.speech-content button.leaderboard-row {
   display: grid;
   grid-template-columns: 44px 18px 1fr auto;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 10px 14px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font: inherit;
   font-size: var(--font-size-body);
+  font-weight: 400;
+  text-align: left;
   color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
 }
 
-.leaderboard-row + .leaderboard-row {
+.speech-content button.leaderboard-row:hover,
+.speech-content button.leaderboard-row:focus-visible {
+  background: var(--color-surface-hover);
+}
+
+.leaderboard-list li + li {
   border-top: 1px solid var(--color-border-subtle);
 }
 

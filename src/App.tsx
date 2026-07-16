@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SmilePlus, TriangleAlert } from 'lucide-react';
+import { ChevronLeft, ChevronRight, SmilePlus, TriangleAlert } from 'lucide-react';
 import { Farm } from './scene/Farm';
 import { bullCoatForWinner, useWinnerColors } from './hooks/useBullColor';
 import type { WinnerHueMap } from './hooks/useBullColor';
@@ -203,6 +203,19 @@ function App() {
   }, [isBarnOpen, isMenuOpen, isAdminPanelOpen, isAdminPinOpen, isLeaderboardOpen, isMascotOpen, namesFor, isPickerOpen, selectedTobuId, selectTobu]);
 
   const selected = tobus.find((t) => t.id === selectedTobuId);
+
+  // Winner pager (US-003): the selected winner's approved wins, oldest→newest.
+  // `tobus` is already sorted date-then-id by subscribeToTobus, so filtering
+  // preserves chronological order — no extra sort needed.
+  const winnerTobus = useMemo(() => {
+    if (!selected) return [];
+    return tobus.filter(
+      (t) => t.status === 'approved' && t.winner_name === selected.winner_name,
+    );
+  }, [tobus, selected]);
+  const winnerIndex = selected ? winnerTobus.findIndex((t) => t.id === selected.id) : -1;
+  const hasMultipleWins = winnerTobus.length > 1;
+
   const selectedReaction = useMemo(() => {
     if (!selected || !userName) return null;
     return REACTION_EMOJIS.find((emoji) => selected.reactions[emoji]?.includes(userName)) ?? null;
@@ -225,6 +238,20 @@ function App() {
     }
 
     setTobus(tobus.map((entry) => (entry.id === selected.id ? { ...entry, reactions: next } : entry)));
+  };
+
+  // Wall of Fame → story jump (US-004): open the winner's most recent
+  // approved win; the US-003 pager lets the viewer step back from there.
+  // The explicit sort restates subscribeToTobus's order so the "most recent"
+  // intent is legible here without tracing the subscription.
+  const handleSelectWinner = (name: string) => {
+    const wins = tobus
+      .filter((t) => t.status === 'approved' && t.winner_name === name)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+    const mostRecent = wins[wins.length - 1];
+    if (!mostRecent) return;
+    selectTobu(mostRecent.id);
+    setIsLeaderboardOpen(false);
   };
 
   const handleReaction = async (emoji: ReactionEmoji) => {
@@ -295,7 +322,12 @@ function App() {
 
       {!userName && !isGuest && <RosterPicker />}
 
-      {isLeaderboardOpen && <Leaderboard onClose={() => setIsLeaderboardOpen(false)} />}
+      {isLeaderboardOpen && (
+        <Leaderboard
+          onClose={() => setIsLeaderboardOpen(false)}
+          onSelectWinner={handleSelectWinner}
+        />
+      )}
 
       {selected && (
         <div className="speech-bubble" onClick={() => selectTobu(null)}>
@@ -398,7 +430,31 @@ function App() {
                 )}
               </div>
             </div>
-            <button onClick={() => selectTobu(null)}>Close</button>
+            {hasMultipleWins && (
+              <div className="tobu-pager">
+                <button
+                  type="button"
+                  className="tobu-pager-btn"
+                  disabled={winnerIndex <= 0}
+                  aria-label={`Previous win by ${selected.winner_name}`}
+                  onClick={() => selectTobu(winnerTobus[winnerIndex - 1].id)}
+                >
+                  <ChevronLeft size={18} aria-hidden />
+                </button>
+                <span className="tobu-pager-count">
+                  {winnerIndex + 1} / {winnerTobus.length}
+                </span>
+                <button
+                  type="button"
+                  className="tobu-pager-btn"
+                  disabled={winnerIndex >= winnerTobus.length - 1}
+                  aria-label={`Next win by ${selected.winner_name}`}
+                  onClick={() => selectTobu(winnerTobus[winnerIndex + 1].id)}
+                >
+                  <ChevronRight size={18} aria-hidden />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -441,13 +497,12 @@ function App() {
       {isMascotOpen && (
         <div className="speech-bubble" onClick={() => setIsMascotOpen(false)}>
           <div className="speech-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Tobu Mascot</h2>
+            <h2>Who is Tobu?</h2>
             <p>
               Tobu is the IESE MBA 2027 Barcelona section mascot — a plushie bull awarded weekly for the funniest comment,
               wildest gesture, or biggest contribution to class.
             </p>
             <p>Every Tobu winner births a new bull on this farm. Tap any bull to read their moment.</p>
-            <button onClick={() => setIsMascotOpen(false)}>Close</button>
           </div>
         </div>
       )}
