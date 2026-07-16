@@ -18,3 +18,17 @@ export const tractorState = {
 export const herdState = {
   minDistToTractor: Infinity,
 };
+
+// Live bull positions keyed by Tobu id (prd-camera-tracking-wall-of-fame
+// US-003). BullHerd writes every frame; the CameraTracker reads a snapshot
+// when a Wall of Fame click / pager step needs to find a bull. Entries are
+// pruned alongside BullHerd's runtime cleanup when the roster changes.
+export const bullPositions = new Map<string, { x: number; z: number }>();
+
+// CameraTracker publishes its current marker state here for E2E inspection
+// (there's no DOM to assert against for an in-canvas ring).
+export const trackingState = {
+  active: false,
+  x: 0,
+  z: 0,
+};

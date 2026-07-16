@@ -20,7 +20,7 @@ import {
 import { useBullModel } from './models';
 import { mergeGltfMeshes } from './gltfUtils';
 import { computePastureBound, computeSpawnPositions, TRACTOR_CLEARANCE } from './farmLayout';
-import { herdState, tractorState } from './tractorState';
+import { bullPositions, herdState, tractorState } from './tractorState';
 import type { Tobu } from '../types';
 import { playMoo } from '../audio/useFarmAudio';
 
@@ -322,7 +322,10 @@ export function BullHerd() {
       mesh.setColorAt(i, _color);
     });
     for (const id of runtimes.current.keys()) {
-      if (!seen.has(id)) runtimes.current.delete(id);
+      if (!seen.has(id)) {
+        runtimes.current.delete(id);
+        bullPositions.delete(id); // keep the tracking channel in lockstep
+      }
     }
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [indexed, count, spawnById, winnerColors]);
@@ -409,7 +412,7 @@ export function BullHerd() {
     // Containment + compose: keep everyone inside the fence, out of landmark
     // footprints, and clear of the moving tractor, then write matrices.
     let minTractorD2 = Infinity;
-    indexed.forEach((_, i) => {
+    indexed.forEach(({ tobu }, i) => {
       const rt = rts[i];
       if (!rt) return;
       rt.position.x = Math.min(Math.max(rt.position.x, -wanderBound), wanderBound);
@@ -449,6 +452,16 @@ export function BullHerd() {
       _quat.setFromAxisAngle(UP, rt.heading);
       _matrix.compose(rt.position, _quat, _scale);
       mesh.setMatrixAt(i, _matrix);
+
+      // Publish for camera tracking (prd-camera-tracking US-003). Reuse the
+      // entry object to avoid per-frame allocations across the herd.
+      const pub = bullPositions.get(tobu.id);
+      if (pub) {
+        pub.x = rt.position.x;
+        pub.z = rt.position.z;
+      } else {
+        bullPositions.set(tobu.id, { x: rt.position.x, z: rt.position.z });
+      }
     });
 
     // Publish for the tractor's stop-for-bull check (US-001).

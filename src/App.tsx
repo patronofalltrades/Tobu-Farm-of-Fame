@@ -109,6 +109,9 @@ function App() {
   const isAdmin = useFarmStore((s) => s.isAdmin);
   const setAdmin = useFarmStore((s) => s.setAdmin);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  // Camera tracking (prd-camera-tracking-wall-of-fame): set only by the
+  // Wall of Fame jump and the winner pager — never by direct bull taps.
+  const [trackedTobuId, setTrackedTobuId] = useState<string | null>(null);
   // Load-screen gating (prd-tobu-load-screen): the farm mounts and loads
   // beneath the splash; entry needs data + a rendered first frame.
   const [hasEntered, setHasEntered] = useState(false);
@@ -216,6 +219,19 @@ function App() {
   const winnerIndex = selected ? winnerTobus.findIndex((t) => t.id === selected.id) : -1;
   const hasMultipleWins = winnerTobus.length > 1;
 
+  // Tracking follows only its own triggers: if the open Tobu changes through
+  // any *other* path (direct bull tap, bubble close), drop the marker so a
+  // stale ring never lingers on an unrelated view (FR-6).
+  useEffect(() => {
+    setTrackedTobuId((cur) => (cur !== null && cur === selectedTobuId ? cur : null));
+  }, [selectedTobuId]);
+
+  // Pager steps re-track: same setter pair the Wall of Fame jump uses.
+  const pageTo = (id: string) => {
+    setTrackedTobuId(id);
+    selectTobu(id);
+  };
+
   const selectedReaction = useMemo(() => {
     if (!selected || !userName) return null;
     return REACTION_EMOJIS.find((emoji) => selected.reactions[emoji]?.includes(userName)) ?? null;
@@ -251,6 +267,7 @@ function App() {
     const mostRecent = wins[wins.length - 1];
     if (!mostRecent) return;
     selectTobu(mostRecent.id);
+    setTrackedTobuId(mostRecent.id); // camera-track the jump (US-001)
     setIsLeaderboardOpen(false);
   };
 
@@ -317,6 +334,7 @@ function App() {
           onMascotClick={() => setIsMascotOpen(true)}
           onSignpostClick={() => setIsLeaderboardOpen(true)}
           onFirstFrame={() => setSceneReady(true)}
+          trackedTobuId={trackedTobuId}
         />
       </div>
 
@@ -437,7 +455,7 @@ function App() {
                   className="tobu-pager-btn"
                   disabled={winnerIndex <= 0}
                   aria-label={`Previous win by ${selected.winner_name}`}
-                  onClick={() => selectTobu(winnerTobus[winnerIndex - 1].id)}
+                  onClick={() => pageTo(winnerTobus[winnerIndex - 1].id)}
                 >
                   <ChevronLeft size={18} aria-hidden />
                 </button>
@@ -449,7 +467,7 @@ function App() {
                   className="tobu-pager-btn"
                   disabled={winnerIndex >= winnerTobus.length - 1}
                   aria-label={`Next win by ${selected.winner_name}`}
-                  onClick={() => selectTobu(winnerTobus[winnerIndex + 1].id)}
+                  onClick={() => pageTo(winnerTobus[winnerIndex + 1].id)}
                 >
                   <ChevronRight size={18} aria-hidden />
                 </button>

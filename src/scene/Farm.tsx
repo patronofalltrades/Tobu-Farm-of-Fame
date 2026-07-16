@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
+import type { RefObject } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { MapControls, Sky, Environment, Clone } from '@react-three/drei';
-import { MeshStandardMaterial } from 'three';
+import { MeshStandardMaterial, Vector3 } from 'three';
 import type { Group, WebGLProgramParametersWithUniforms } from 'three';
 import type { MapControls as MapControlsImpl } from 'three-stdlib';
 import { BullHerd } from './BullHerd';
@@ -28,7 +29,7 @@ import {
   TRACTOR_STOP_RADIUS,
   type TractorPose,
 } from './farmLayout';
-import { herdState, tractorState } from './tractorState';
+import { bullPositions, herdState, tractorState, trackingState } from './tractorState';
 import { useFarmStore } from '../stores/useFarmStore';
 import './models';
 
@@ -43,6 +44,9 @@ interface FarmProps {
   /** Fires once, on the first rendered frame — the load screen's
    *  "scene is actually visible" signal (prd-tobu-load-screen US-002). */
   onFirstFrame?: () => void;
+  /** Tobu id to camera-track (Wall of Fame click / pager step); null when no
+   *  tracking is active (prd-camera-tracking-wall-of-fame). */
+  trackedTobuId?: string | null;
 }
 
 function FirstFrameProbe({ onFirstFrame }: { onFirstFrame?: () => void }) {
@@ -229,11 +233,118 @@ function Ground() {
   );
 }
 
+const EASE_DURATION_MS = 600;
+
+/**
+ * Camera tracking (prd-camera-tracking-wall-of-fame US-001/US-002): when
+ * `trackedTobuId` changes to a bull, snapshot its live position, ease the
+ * MapControls target (and camera, same offset — zoom/angle preserved) toward
+ * it, and drop a brand-yellow ring at that spot. Snap-to-once: the ring and
+ * ease use the position at trigger time; the bull is free to wander off.
+ * Any manual control input ('start' event) cancels the ease immediately.
+ */
+function CameraTracker({
+  trackedTobuId,
+  bound,
+  controlsRef,
+}: {
+  trackedTobuId: string | null;
+  bound: number;
+  controlsRef: RefObject<MapControlsImpl | null>;
+}) {
+  // Snap-to-once: the position is snapshotted when the tracked id changes,
+  // not re-read per frame — the bull may wander off afterward by design.
+  const markerPos = useMemo(() => {
+    if (!trackedTobuId) return null;
+    const p = bullPositions.get(trackedTobuId);
+    return p ? { x: p.x, z: p.z } : null;
+  }, [trackedTobuId]);
+
+  const ease = useRef<{
+    fromTarget: Vector3;
+    toTarget: Vector3;
+    camOffset: Vector3;
+    startTime: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!markerPos) {
+      ease.current = null;
+      trackingState.active = false;
+      return;
+    }
+    trackingState.active = true;
+    trackingState.x = markerPos.x;
+    trackingState.z = markerPos.z;
+    const controls = controlsRef.current;
+    if (!controls) return;
+    const limit = computePanLimit(bound);
+    const camOffset = controls.object.position.clone().sub(controls.target);
+    // Bias the landing point toward the camera so the bull settles in the
+    // upper (visible) band of the screen instead of dead center, where the
+    // story bubble covers it — sized for portrait phones (the card spans
+    // most of the middle of the screen there; landscape cards are narrow,
+    // so the higher landing spot stays comfortably visible either way).
+    const toward = new Vector3(camOffset.x, 0, camOffset.z);
+    const bias = toward.lengthSq() > 1e-6 ? toward.normalize().multiplyScalar(6) : toward.set(0, 0, 0);
+    ease.current = {
+      fromTarget: controls.target.clone(),
+      toTarget: new Vector3(
+        Math.min(Math.max(markerPos.x + bias.x, -limit), limit),
+        0,
+        Math.min(Math.max(markerPos.z + bias.z, -limit), limit),
+      ),
+      camOffset,
+      startTime: performance.now(),
+    };
+  }, [markerPos, bound, controlsRef]);
+
+  // Manual pan/zoom/rotate wins instantly — never fight the user's fingers.
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+    const cancel = () => {
+      ease.current = null;
+    };
+    controls.addEventListener('start', cancel);
+    return () => controls.removeEventListener('start', cancel);
+  }, [controlsRef]);
+
+  useFrame(() => {
+    const e = ease.current;
+    const controls = controlsRef.current;
+    if (!e || !controls) return;
+    const t = Math.min((performance.now() - e.startTime) / EASE_DURATION_MS, 1);
+    const k = 1 - Math.pow(1 - t, 3); // ease-out cubic: fast start, gentle settle
+    controls.target.copy(e.fromTarget).lerp(e.toTarget, k);
+    controls.object.position.copy(controls.target).add(e.camOffset);
+    if (t >= 1) ease.current = null;
+  });
+
+  if (!markerPos) return null;
+  return (
+    // raycast disabled so the ring never steals taps from the bull above it.
+    <mesh
+      position={[markerPos.x, 0.03, markerPos.z]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      raycast={() => null}
+    >
+      <ringGeometry args={[0.9, 1.2, 40]} />
+      <meshBasicMaterial color="#FFCD00" transparent opacity={0.85} depthWrite={false} />
+    </mesh>
+  );
+}
+
 /** Map-style controls: drag pans across the ground plane (no fixed pivot on
  *  the mascot), pinch/scroll zooms, two-finger/right-drag rotates. The pan
  *  target is clamped so users can't scroll past the scenery into the void. */
-function FarmControls({ bound }: { bound: number }) {
-  const controlsRef = useRef<MapControlsImpl>(null);
+function FarmControls({
+  bound,
+  controlsRef,
+}: {
+  bound: number;
+  controlsRef: RefObject<MapControlsImpl | null>;
+}) {
   const panLimit = computePanLimit(bound);
 
   const clampPan = () => {
@@ -266,9 +377,16 @@ function FarmControls({ bound }: { bound: number }) {
   );
 }
 
-export function Farm({ onBarnClick, onMascotClick, onSignpostClick, onFirstFrame }: FarmProps) {
+export function Farm({
+  onBarnClick,
+  onMascotClick,
+  onSignpostClick,
+  onFirstFrame,
+  trackedTobuId = null,
+}: FarmProps) {
   const tobus = useFarmStore((s) => s.tobus);
   const bound = computePastureBound(approvedCount(tobus));
+  const controlsRef = useRef<MapControlsImpl>(null);
   return (
     <Canvas shadows={false} camera={{ position: [0, 8, 14], fov: 50 }}>
       <FirstFrameProbe onFirstFrame={onFirstFrame} />
@@ -288,7 +406,8 @@ export function Farm({ onBarnClick, onMascotClick, onSignpostClick, onFirstFrame
       <Signpost onClick={onSignpostClick} />
       <BullHerd />
 
-      <FarmControls bound={bound} />
+      <CameraTracker trackedTobuId={trackedTobuId} bound={bound} controlsRef={controlsRef} />
+      <FarmControls bound={bound} controlsRef={controlsRef} />
     </Canvas>
   );
 }
