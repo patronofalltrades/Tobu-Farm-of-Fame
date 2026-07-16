@@ -46,13 +46,12 @@ const LANDMARK_EXCLUSIONS: Array<{ x: number; z: number; r: number }> = [
   { x: -8, z: -6, r: 2.5 },     // barn
   { x: 0, z: 0, r: 2.6 },       // mascot (scaled to 1.5× — footprint grew with her)
   { x: 8, z: -4, r: 1.5 },      // signpost
-  // Farmstead + pond (prd-proper-farm US-002/US-003) — positions mirror
-  // Farmstead/GroundFeatures in Farm.tsx; keep the two in sync.
+  // Farmstead (prd-proper-farm US-002) — positions mirror Farmstead in
+  // Farm.tsx; keep the two in sync.
   { x: -9.6, z: -9.4, r: 1.7 }, // silo
   { x: -6.1, z: -3.8, r: 1.5 }, // hay bales (shared circle over the pair)
   { x: -5.2, z: -7.6, r: 1.5 }, // trough
   { x: -10.5, z: -1.5, r: 1.4 },// well
-  { x: 7, z: 6.5, r: 2.8 },     // pond (bulls don't stand in water)
 ];
 
 // Herd separation: bulls softly push each other apart so they never stand
